@@ -1,58 +1,112 @@
-= The RISC-V Instruction Set Manual
-:doctype: book
-:description: The RISC-V Instruction Set Manual
-:colophon:
-:preface-title: Preamble
-:appendix-caption: Appendix
-:imagesdir: ../docs-resources/images
-:title-logo-image: image:risc-v_logo.png["RISC-V International Logo",pdfwidth=3.25in,align=center]
-ifdef::draft-watermark[]
-:page-background-image: image:draft.png[opacity=20%]
+= Attached Matrix Extension (Zvame)
+Authors: Derek Hower, Luca Maroncelli, Eric Mahurin, Siqi Zhao, Qiu Jing, Xiang Xiaoyan
+include::../docs-resources/global-config.adoc[]
+:docgroup: AME TG
+:description: Attached Matrix Extension (Zvame)
+ifdef::build-commit[]
+:version-label: Commit
+:revnumber: {build-commit}
 endif::[]
-:back-cover-image: image:riscv-horizontal-color.svg[opacity=25%]
+ifdef::build-time[]
+:revdate: Built {build-time}
+endif::[]
+ifdef::revremark[]
+endif::[]
+:preface-title: Preamble
+:colophon:
+:appendix-caption: Appendix
+:title-logo-image: image:risc-v_logo.png["RISC-V International Logo",pdfwidth=3.25in,align=center]
+// Settings:
 :experimental:
 :reproducible:
-:imagesoutdir: {docdir}/../build/images-out
-:bibtex-file: src/resources/riscv-spec.bib
+//:WaveDromEditorApp: app/wavedrom-editor.app
+:imagesoutdir: images
+//:srcdir: src
+:bibtex-file: src/example.bib
 :bibtex-order: alphabetical
 :bibtex-style: apa
-:bibtex-format: asciidoc
-:bibtex-throw: false
 :icons: font
 :lang: en
-:example-caption: Example
 :listing-caption: Listing
 :sectnums:
-:partnums:
-:sectnumlevels: 4
-:sectlinks:
 :toc: left
-:toclevels: 2
+:toclevels: 4
+:source-highlighter: pygments
+ifdef::backend-pdf[]
 :source-highlighter: rouge
-:table-caption: Table
-:figure-caption: Figure
-:xrefstyle: short
-:chapter-refsig: Chapter
-:section-refsig: Section
-:appendix-refsig: Appendix
+endif::[]
 :data-uri:
 :hide-uri-scheme:
+:stem: latexmath
 :footnote:
+:xrefstyle: short
 :imagesdir: images
+:page-background-image: image:draft.png[]
 
-include::symbols.adoc[]
+[preface]
+== List of figures
+list-of::image[hide_empty_section=true, enhanced_rendering=true]
+
+[preface]
+== List of tables
+list-of::table[hide_empty_section=true, enhanced_rendering=true]
+
+[preface]
+== List of listings
+list-of::listing[hide_empty_section=true, enhanced_rendering=true]
+
+
+
+[preface]
+== Copyright and license information
+This specification is licensed under the Creative Commons
+Attribution 4.0 International License (CC-BY 4.0). The full
+license text is available at
+https://creativecommons.org/licenses/by/4.0/.
+
+Copyright 2025 by RISC-V International.
+
+[preface]
 include::contributors.adoc[]
-include::license.adoc[]
 
-:imagesdir: unpriv/images
-include::unpriv/unpriv.adoc[]
-:imagesdir: priv/images
-include::priv/priv.adoc[]
-:imagesdir: profiles/images
-include::profiles/profiles.adoc[]
+<<<
 
-:imagesdir: images
-include::index.adoc[]
-// this is generated from index markers.
-include::bibliography.adoc[]
-// this references the riscv-spec.bib file that has been copied into the resources directory
+include::intro.adoc[]
+
+<<<
+
+include::programming_model.adoc[]
+
+<<<
+
+include::state.adoc[]
+
+<<<
+
+include::datatypes.adoc[]
+
+<<<
+
+include::parameters.adoc[]
+
+<<<
+
+include::examples.adoc[]
+
+<<<
+
+== Formal description
+
+The AME specification is formally defined in this specification using
+https://dhower-qc.github.io/riscv-unified-db/docs/idl[ISA Description Language (IDL)].
+
+include::instructions.adoc[]
+include::functions.adoc[]
+
+include::glossary.adoc[]
+
+include::xref-anchors.adoc[]
+
+// The index must precede the bibliography
+// include::index.adoc[]
+// include::bibliography.adoc[]

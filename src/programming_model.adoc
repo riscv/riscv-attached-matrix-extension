@@ -1,0 +1,702 @@
+[[programming_model]]
+== Programming Model
+:imagesdir: ../images
+
+=== Instruction stream
+
+AME instructions are in-line with other instructions on the hart.
+They are executed in program order, though follow a weaker memory model than RVWMO such that
+AME memory operations not guaranteed to appear in program order relative to non-AME memory operations
+without an ordering fence (see TODO).
+
+TODO: AME state enablement.
+
+=== State
+
+Each hart implementing AME adds its own, private, AME registers and CSRs.
+AME instructions execute on the hart to access that state and control data transfer between AME
+registers and memory.
+
+.Register state and data movement paths for AME. The F/D and V extensions are _optional_ with AME. The only architectural datapath between vector (if present) and AME is through memory. The scalar datapath(s) is/are one-way. AME accumulator state can only be moved to/from the AME matrix registers.
+image::ame_state.svg[AME state and architectural datapaths]
+
+The `Acc` registers are used to accumulate the output of partial matrix multiplies.
+The `M` registers are general-purpose matrix registers.
+They are used for anything that is not an accumulation, including the data operand of load or store instructions,
+the input operands of 1D (element-wise/vector) operations, and the output operands of 1D operations.
+
+A single `M` register may hold multiple, one, or part of a square,
+depending on implementation-defined parameters and programmed datatype.
+Generally, the number of squares that will fit in an `M` register is inversely proportional
+to the datatype size (because larger datatypes require more storage).
+
+In contrast, an `Acc` register always holds exactly one square.
+
+=== Squares
+
+All AME computational instructions operate on fixed-sized NxN square matrices.
+
+[NOTE]
+--
+This constraint keeps the ISA and hardware simple: every compute instruction consumes and produces
+the same logical shape (`N x N`), so instruction encoding does not need per-operand shape fields,
+register mapping is uniform, and implementations can use fixed datapaths and scheduling.
+
+For contrast, general matrix multiply on non-square inputs (`M x K` by `K x N`) produces `M x N`.
+AME handles this by tiling into `N x N` squares and zero-padding boundary tiles in software.
+
+.Example (`N = 8`)
+* Multiply `A(3x5)` by `B(5x2)`.
+* Software packs `A` and `B` into zero-padded `8x8` squares.
+* AME computes a full `8x8` result square.
+* Software keeps only the valid `3x2` upper-left region and discards padded rows/columns.
++
+image::ame-square-padding-example.svg[Matrix padding example for N=8]
+
+Larger non-square problems are handled the same way: process full interior `N x N` tiles normally,
+and pad only edge tiles.
+--
+
+The row/column dimension, N, is implementation-defined and is equal to the
+square root of <<udb:doc:param:AME_NELEM,AME_NELEM>>.
+<<udb:doc:param:AME_NELEM,AME_NELEM>> can be any power of 4.
+
+[NOTE]
+--
+It is possible to create portable AME binaries regardless of the chosen value of
+<<udb:doc:param:AME_NELEM,AME_NELEM>>.
+
+Highly-tuned binaries may produce a better result by targeting a specific value of
+<<udb:doc:param:AME_NELEM,AME_NELEM>>, similar to how auto-vectorizing compilers can generate
+more efficient code for RISC-V Vector when VLEN is known.
+--
+
+All elements within a single square have the same datatype, for example unsigned 8-bit integer or
+single-precision IEEE floating point.
+
+A single operation may reference squares with different datatypes (for example, 8-bit integer inputs widening to a 16-bit integer output).
+Mixed-datatype operations are optional; see <<datatypes>> for the implementation discovery mechanism.
+
+[[mapping-squares-to-m-registers]]
+==== Mapping squares to M registers
+
+A single square (vector or matrix) may fit in one `M` register or may span multiple consecutive
+`M` registers, depending on the datatype size.
+If the datatype is no wider than <<udb:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>>,
+one register is sufficient;
+wider datatypes require additional registers.
+The required register count is the datatype size rounded up in units of
+<<udb:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>>
+(that is, `ceil(sizeof(datatype)/AME_UNIT_DATATYPE_SIZE)`).
+
+When a square requires multiple consecutive `M` registers, consecutive registers are combined into a group.
+When registers are grouped, the register index must be a multiple of the group size (_e.g._, when
+group size is two, register indices must be even).
+Specifying a register index that is not a multiple of the group size results in an
+Illegal Instruction exception.
+This mechanism is analogous to the `LMUL` facility used in the RISC-V vector (`V`) extension.
+
+When the programmed datatype is a *storage-only datatype*
+(size < `<<udb:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>>`),
+multiple logical squares are packed into a single M register.
+The number of squares per register is the *pack factor*:
+`pack_factor = AME_UNIT_DATATYPE_SIZE / sizeof(dtype)`.
+Storage-only registers cannot be used as operands in compute instructions;
+`<<udb:doc:inst:mconv_ew,mconv.ew>>` must first expand the data into
+compute-dtype registers before computation.
+
+.Square-to-M-register mapping examples
+image::ame-square-reg-mapping.svg[Square to M register mapping examples]
+
+When an `M` register is part of a group, only the lowest-indexed register of that group may be used directly in operations.
+Using any other register in the group results in undefined behavior.
+
+// not really bash, but it gets us colored # comments
+[source,bash]
+----
+# precondition:
+# a square is in m[2-3]
+
+madd.1d m2, m2, m2  # well-defined, m2 = m2 + m2
+
+madd.1d m2, m3, m3  # undefined
+madd.1d m3, m2, m2  # undefined
+----
+
+=== Polymorphic instructions
+
+AME instructions do not encode operand datatypes; instead, datatypes are determined by dedicated datatype registers.
+
+[NOTE]
+This feature makes AME analogous to polymorphic programming languages
+– a single function (instruction) is defined for all datatype combinations (polymorphic argument types).
+
+=== Datatypes
+
+AME supports up to `2^32 - 1` unique datatypes, half of which are reserved for custom use.
+The value 0 is reserved to mean uninitialized.
+
+[NOTE]
+--
+The datatype registers are similar to WARL CSR fields, so implementations only need to support
+enough state to represent the datatypes they support.
+
+For example, an implementation that only supports two datatypes would only need two bits to
+represent those datatypes plus uninitialized.
+--
+
+Standard datatypes and encoding rules are listed in <<datatypes>>.
+
+Implementations may choose which standard datatypes are supported and which custom datatypes
+are supported.
+
+A legal implementation may support either zero standard datatypes or zero custom datatypes (i.e.,
+all custom or all standard).
+
+[NOTE]
+--
+Profiles will likely mandate a minimal set of supported datatypes.
+--
+
+Datatypes are set using the <<udb:doc:inst:msettyp,msettyp>> instruction and
+read using the <<udb:doc:inst:mgettyp,mgettyp>> instruction.
+
+==== Compute and storage datatypes
+
+For a given implementation, datatypes can be partitioned into *compute* datatypes and *storage*
+datatypes. Compute datatypes are those that can be used with AME 1D and/or 2D computation instructions.
+Storage datatypes are those that can _only_ be used as the destination or source of a load or store.
+Any datatype whose size is less than <<udb:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>> _must_ be a storage datatype.
+Storage datatypes are useful to handle packed datatype formats; see <<mapping-squares-to-m-registers>> for more details.
+
+=== Data movement
+
+Data movement between AME register files, the integer (X) register file, the floating point (F)
+register file, and memory are restricted in order to facilitate a detached AME execution unit.
+
+There are no AME data movement instructions between memory and the `Acc` registers;
+rather, `Acc` registers can only be moved in to or out of the `M` registers.
+
+`M` register data can be loaded and stored from/to memory.
+
+A scalar from the X or F register file can be sent to an `M` register.
+
+AME does not define data movement operations between AME register files and the vector (V)
+register file.
+Performance-sensitive AME code should use AME 1D operations on matrix data rather than RISC-V Vector.
+
+=== Memory
+
+AME uses the same address space as the host hart.
+In systems with virtual memory, AME loads and stores go through (H)S-mode translation and,
+if applicable, G-stage translation when run within a hypervisor.
+
+AME provides memory storage variants that operate on one of three memory layouts:
+
+*	Row-major (`mls.rm` / `mss.rm`)
+*	Column-major (`mls.cm` / `mss.cm`)
+*	Opaque, implementation-defined (`mls` / `mss`)
+
+The row-major and column-major variants are called the _interoperability_ storage instructions.
+They transfer data as a contiguous block — no striding or partial-tile predication is supported.
+
+Behavior is only well-defined when loading an opaque tensor layout that was previously stored
+opaquely on the same implementation.
+Generally, software should assume that loads / stores using the opaque format will be more
+performant than loads / stores using one of the formats with a standard layout.
+
+==== Consistency model
+
+Memory transfers from/to `M` registers follow a weaker memory model than other memory transfers on
+the hart (from/to the X, F, or V register files).
+Informally, memory transfers involving AME state may appear out of program-order with respect to
+non-AME memory transfers in the hart.
+Ordering is restored with QQQ (fence.ame instruction, ldaq, strl).
+
+=== Operators
+
+AME supports six broad classes of arithmetic and/or logical operators:
+
+*	2D Matrix multiply
+*	1D Element-wise/vector
+*	Intra-tensor (reduction/expansion/permutation)
+*	Register move / data conversion
+*	Scalar broadcast
+*	Load/store
+
+AME does not support general masking/predication on computational instructions, though a future extension may add support.
+
+
+
+==== 2-dimensional matrix multiply operations
+
+Full N^3^ matrix multiplication of squares is a primitive operation of AME, performed using a single instruction.
+
+AME matrix multiplication instructions calculate the matrix product, `C` of two squares, `A` and `B`.
+
+Each output element `C[i,j]` is computed as the dot product of:
+
+* row `i` of `A`, and
+* column `j` of `B`.
+
+The accumulation order for additions inside each dot product is implementation-defined.
+That order is fixed within a given implementation, so repeated runs on the same implementation
+produce the same result.
+
+[NOTE]
+Different implementations may use different accumulation orders, and therefore may produce
+different results (especially for floating-point data).
+
+Formally:
+
+.AME matrix multiplication
+[source]
+--
+def perm(range): implementation-defined permutation over range
+
+for i from 0 to N-1:
+  for j from 0 to N-1:
+    C[i,j] = sum(A[i,k] * B[k,j] for k in perm(0..N-1))
+--
+
+Matrix multiplication is not commutative (`A*B != B*A` in general),
+so operand order must be preserved by software using AME primitives.
+
+AME defines [Udb::Instruction#mmul.2d, Udb::Instruction#mmulacc.2d, Udb::Instruction#mmulaccneg.2d, Udb::Instruction#mmulat.2d, Udb::Instruction#mmulatacc.2d, Udb::Instruction#mmulbt.2d, Udb::Instruction#mmulbtacc.2d, Udb::Instruction#mmulneg.2d] instructions that perform a matrix multiply.
+The destination of matrix multiply operations is always an accumulator register.
+The operations differ in
+whether or not they accumulate into the destination register (versus overwrite it),
+whether or not they transpose an input before multiplying,
+and whether or not they negate a result.
+
+[cols="1,2,3",options="header"]
+|===
+| Instruction   | Operation  | Description
+| <<udb:doc:inst:mmul_2d,mmul.2d>>
+| `C = A × B`
+| Matrix multiply
+| <<udb:doc:inst:mmulacc_2d,mmulacc.2d>>
+| `C = C + A × B`
+| Matrix multiply accumulate
+| <<udb:doc:inst:mmulaccneg_2d,mmulaccneg.2d>>
+| `C = C - A × B`
+| Negated matrix multiply accumulate
+| <<udb:doc:inst:mmulat_2d,mmulat.2d>>
+| `C = A^T^ × B`
+| Matrix multiply with transposed A
+| <<udb:doc:inst:mmulatacc_2d,mmulatacc.2d>>
+| `C = C + A^T^ × B`
+| Matrix multiply with transposed A, accumulate
+| <<udb:doc:inst:mmulbt_2d,mmulbt.2d>>
+| `C = A × B^T^`
+| Matrix multiply with transposed B
+| <<udb:doc:inst:mmulbtacc_2d,mmulbtacc.2d>>
+| `C = C + A × B^T^`
+| Matrix multiply with transposed B, accumulate
+| <<udb:doc:inst:mmulneg_2d,mmulneg.2d>>
+| `C = -(A × B)`
+| Negated matrix multiply
+|===
+
+==== 1-dimensional elementwise operations
+
+AME defines 1-dimensional (elementwise/vector) operations that use the `M` registers.
+
+Element-wise operations apply the same operator independently at each coordinate of the input squares.
+For every position `(i,j)`, the instruction reads `A[i,j]` and `B[i,j]`, computes the result, and
+writes it to `C[i,j]`.
+
+There are four classes of elementwise operations: Arithmetic, Bitwise, Comparison, and Nonlinear.
+
+Arithmetic::
+[cols="1,2,3",options="header"]
+|===
+| Instruction | Operation |  Description
+| <<udb:doc:inst:mabs_ew,mabs.ew>>
+| `D[i] = \|A[i]\|`
+| Elementwise absolute value
+| <<udb:doc:inst:mabsdiff_ew,mabsdiff.ew>>
+| `D[i] = \|A[i] - B[i]\|`
+| Elementwise absolute difference
+| <<udb:doc:inst:mabsdiff_ew_x,mabsdiff.ew.x>>
+| `D[i] = \|c - B[i]\|`
+| Elementwise scalar absolute difference
+| <<udb:doc:inst:madd_ew,madd.ew>>
+| `D[i] = A[i] + B[i]`
+| Elementwise addition
+| <<udb:doc:inst:madd_ew_x,madd.ew.x>>
+| `D[i] = c + B[i]`
+| Elementwise scalar addition
+| <<udb:doc:inst:mhdiff_ew,mhdiff.ew>>
+| `D[i] = (B[i] - A[i]) / 2`
+| Elementwise half-difference
+| <<udb:doc:inst:mhdiff_ew_x,mhdiff.ew.x>>
+| `D[i] = (c - B[i]) / 2`
+| Elementwise scalar half-difference
+| <<udb:doc:inst:mmax_ew,mmax.ew>>
+| `D[i] = max(A[i], B[i])`
+| Elementwise maximum
+| <<udb:doc:inst:mmax_ew_x,mmax.ew.x>>
+| `D[i] = max(c, B[i])`
+| Elementwise scalar maximum
+| <<udb:doc:inst:mmean_ew,mmean.ew>>
+| `D[i] = (A[i] + B[i]) / 2`
+| Elementwise arithmetic mean (half-add)
+| <<udb:doc:inst:mmean_ew_x,mmean.ew.x>>
+| `D[i] = (c + B[i]) / 2`
+| Elementwise scalar mean
+| <<udb:doc:inst:mmin_ew,mmin.ew>>
+| `D[i] = min(A[i], B[i])`
+| Elementwise minimum
+| <<udb:doc:inst:mmin_ew_x,mmin.ew.x>>
+| `D[i] = min(c, B[i])`
+| Elementwise scalar minimum
+| <<udb:doc:inst:mmul_ew,mmul.ew>>
+| `D[i] = A[i] × B[i]`
+| Elementwise multiplication
+| <<udb:doc:inst:mmul_ew_x,mmul.ew.x>>
+| `D[i] = c × B[i]`
+| Elementwise scalar multiplication
+| <<udb:doc:inst:mmulacc_ew,mmulacc.ew>>
+| `D[i] = D[i] + A[i] × B[i]`
+| Elementwise multiply-accumulate
+| <<udb:doc:inst:mmulacc_ew_x,mmulacc.ew.x>>
+| `D[i] = D[i] + c × B[i]`
+| Elementwise scalar multiply-accumulate
+| <<udb:doc:inst:mmulaccneg_ew,mmulaccneg.ew>>
+| `D[i] = D[i] - A[i] × B[i]`
+| Elementwise negative multiply-accumulate
+| <<udb:doc:inst:mmulaccneg_ew_x,mmulaccneg.ew.x>>
+| `D[i] = D[i] - c × B[i]`
+| Elementwise scalar negative multiply-accumulate
+| <<udb:doc:inst:mmuladd_ew,mmuladd.ew>>
+| `D[i] = A[i] + B[i] × D[i]`
+| Elementwise fused multiply-add
+| <<udb:doc:inst:mmuladd_ew_x,mmuladd.ew.x>>
+| `D[i] = c + B[i] × D[i]`
+| Elementwise scalar fused multiply-add
+| <<udb:doc:inst:mmulneg_ew,mmulneg.ew>>
+| `D[i] = -(A[i] × B[i])`
+| Elementwise negate-multiply
+| <<udb:doc:inst:mmulneg_ew_x,mmulneg.ew.x>>
+| `D[i] = -(c × B[i])`
+| Elementwise scalar negate-multiply
+| <<udb:doc:inst:mmulsub_ew,mmulsub.ew>>
+| `D[i] = A[i] - B[i] × D[i]`
+| Elementwise fused multiply-subtract
+| <<udb:doc:inst:mmulsub_ew_x,mmulsub.ew.x>>
+| `D[i] = c - B[i] × D[i]`
+| Elementwise scalar fused multiply-subtract
+| <<udb:doc:inst:msub_ew,msub.ew>>
+| `D[i] = B[i] - A[i]`
+| Elementwise subtraction
+| <<udb:doc:inst:msub_ew_x,msub.ew.x>>
+| `D[i] = c - B[i]`
+| Elementwise scalar subtraction
+|===
+
+Bitwise::
+[cols="1,2,3",options="header"]
+|===
+| Instruction | Operation | Description
+| <<udb:doc:inst:mand_ew,mand.ew>>
+| `D[i] = A[i] & B[i]`
+| Elementwise bitwise AND
+| <<udb:doc:inst:mand_ew_x,mand.ew.x>>
+| `D[i] = c & B[i]`
+| Elementwise scalar bitwise AND
+| <<udb:doc:inst:mandnot_ew,mandnot.ew>>
+| `D[i] = A[i] & ~B[i]`
+| Elementwise bitwise AND-NOT
+| <<udb:doc:inst:mandnot_ew_x,mandnot.ew.x>>
+| `D[i] = c & ~B[i]`
+| Elementwise scalar bitwise AND-NOT
+| <<udb:doc:inst:mor_ew,mor.ew>>
+| `D[i] = A[i] \| B[i]`
+| Elementwise bitwise OR
+| <<udb:doc:inst:mor_ew_x,mor.ew.x>>
+| `D[i] = c \| B[i]`
+| Elementwise scalar bitwise OR
+| <<udb:doc:inst:mornot_ew,mornot.ew>>
+| `D[i] = A[i] \| ~B[i]`
+| Elementwise bitwise OR-NOT
+| <<udb:doc:inst:mornot_ew_x,mornot.ew.x>>
+| `D[i] = c \| ~B[i]`
+| Elementwise scalar bitwise OR-NOT
+| <<udb:doc:inst:mxor_ew,mxor.ew>>
+| `D[i] = A[i] ^ B[i]`
+| Elementwise bitwise XOR
+| <<udb:doc:inst:mxor_ew_x,mxor.ew.x>>
+| `D[i] = c ^ B[i]`
+| Elementwise scalar bitwise XOR
+|===
+
+Comparison::
+[cols="1,2,3",options="header"]
+|===
+| Instruction | Operation | Description
+| <<udb:doc:inst:mcmovge_ew,mcmovge.ew>>
+| `D[i] = (A[i] >= 0) ? B[i] : D[i]`
+| Elementwise two-way conditional move (non-negative)
+| <<udb:doc:inst:mcmovlt_ew,mcmovlt.ew>>
+| `D[i] = (A[i] < 0) ? B[i] : D[i]`
+| Elementwise two-way conditional move (negative)
+| <<udb:doc:inst:mcmpge_ew,mcmpge.ew>>
+| `D[i] = (A[i] >= B[i]) ? -1 : 0`
+| Elementwise greater-or-equal compare
+| <<udb:doc:inst:mcmpge_ew_x,mcmpge.ew.x>>
+| `D[i] = (c >= B[i]) ? -1 : 0`
+| Elementwise scalar compare greater-or-equal
+| <<udb:doc:inst:mcmplt_ew,mcmplt.ew>>
+| `D[i] = (A[i] < B[i]) ? -1 : 0`
+| Elementwise less-than compare
+| <<udb:doc:inst:mcmplt_ew_x,mcmplt.ew.x>>
+| `D[i] = (c < B[i]) ? -1 : 0`
+| Elementwise scalar compare less-than
+| <<udb:doc:inst:mselge_ew,mselge.ew>>
+| `D[i] = (A[i] >= 0) ? B[i] : 0`
+| Elementwise predicated select (non-negative)
+| <<udb:doc:inst:msellt_ew,msellt.ew>>
+| `D[i] = (A[i] < 0) ? B[i] : 0`
+| Elementwise predicated select (negative)
+|===
+
+Nonlinear::
+[cols="1,2,3",options="header"]
+|===
+| Instruction | Operation | Description
+| <<udb:doc:inst:mexp2_ew,mexp2.ew>>
+| `D[i] = 2^A[i]^`
+| Elementwise base-2 exponentiation
+| <<udb:doc:inst:mldexp_ew,mldexp.ew>>
+| `D[i] = A[i] × 2^B[i]^`
+| Elementwise left-shift scale (ldexp)
+| <<udb:doc:inst:mldexp_ew_x,mldexp.ew.x>>
+| `D[i] = B[i] × 2^c^`
+| Elementwise scalar left-shift scale (ldexp)
+| <<udb:doc:inst:mldexpacc_ew,mldexpacc.ew>>
+| `D[i] = D[i] + A[i] × 2^B[i]^`
+| Elementwise left-shift scale accumulate
+| <<udb:doc:inst:mldexpacc_ew_x,mldexpacc.ew.x>>
+| `D[i] = D[i] + B[i] × 2^c^`
+| Elementwise scalar left-shift scale accumulate
+| <<udb:doc:inst:mlog2_ew,mlog2.ew>>
+| `D[i] = log~2~(A[i])`
+| Elementwise base-2 logarithm
+| <<udb:doc:inst:mlog2sub_ew,mlog2sub.ew>>
+| `D[i] = log~2~(\|A[i]\|) - B[i]`
+| Elementwise log2 minus bias
+| <<udb:doc:inst:mlog2sub_ew_x,mlog2sub.ew.x>>
+| `D[i] = log~2~(\|B[i]\|) - c`
+| Elementwise log2 minus scalar bias
+| <<udb:doc:inst:mrdexp_ew,mrdexp.ew>>
+| `D[i] = A[i] × 2^-B[i]^`
+| Elementwise right-shift scale
+| <<udb:doc:inst:mrdexpacc_ew,mrdexpacc.ew>>
+| `D[i] = D[i] + A[i] × 2^-B[i]^`
+| Elementwise right-shift scale accumulate
+| <<udb:doc:inst:msublog2_ew,msublog2.ew>>
+| `D[i] = B[i] - log~2~(\|A[i]\|)`
+| Elementwise bias minus log2
+| <<udb:doc:inst:msublog2_ew_x,msublog2.ew.x>>
+| `D[i] = c - log~2~(\|B[i]\|)`
+| Elementwise scalar bias minus log2
+|===
+
+==== Reduction operations
+
+AME reduction operations reduce values across a row of a square.
+
+[cols="1,2,3",options="header"]
+|===
+| Instruction | Operation | Description
+| <<udb:doc:inst:mprefixadd_col,mprefixadd.col>>
+| `D[i,j] = Σ~k≤i~ A[k,j]`
+| Elementwise column prefix-sum (inclusive scan)
+| <<udb:doc:inst:mprefixadd_row,mprefixadd.row>>
+| `D[i,j] = Σ~k≤j~ A[i,k]`
+| Elementwise row prefix-sum (inclusive scan)
+| <<udb:doc:inst:mprefixmax_col,mprefixmax.col>>
+| `D[i,j] = max~k≤i~(A[k,j])`
+| Elementwise column prefix-max (running maximum scan)
+| <<udb:doc:inst:mprefixmax_row,mprefixmax.row>>
+| `D[i,j] = max~k≤j~(A[i,k])`
+| Elementwise row prefix-max (running maximum scan)
+| <<udb:doc:inst:mreduceadd_col,mreduceadd.col>>
+| `D[:,j] = Σ~k~ A[k,j]`
+| Elementwise column reduce (add)
+| <<udb:doc:inst:mreduceadd_row,mreduceadd.row>>
+| `D[i,:] = Σ~k~ A[i,k]`
+| Elementwise row reduce (add)
+| <<udb:doc:inst:mreducemax_col,mreducemax.col>>
+| `D[:,j] = max~k~(A[k,j])`
+| Elementwise column reduce (max)
+| <<udb:doc:inst:mreducemax_row,mreducemax.row>>
+| `D[i,:] = max~k~(A[i,k])`
+| Elementwise row reduce (max)
+|===
+
+==== Permutation operations
+
+AME permutation operations swizzle data within a single square.
+
+[cols="1,2,3",options="header"]
+|===
+| Instruction | Operation | Description
+| <<udb:doc:inst:mcolunzip_ew,mcolunzip.ew>>
+| `D[i,j] = A[i,2j] +
+ D[i, N/2+j] = A[i,2j+1]`
+| Elementwise column unzip (de-interleave)
+| <<udb:doc:inst:mcolzip_ew,mcolzip.ew>>
+| `D[i,2j] = A[i,j] +
+ D[i,2j+1] = A[i, N/2+j]`
+| Elementwise column zip (interleave)
+| <<udb:doc:inst:mgather_ew,mgather.ew>>
+| `D[i,j] = A[i, B[i,j]]`
+| Elementwise gather (take)
+| <<udb:doc:inst:mrowunzip_ew,mrowunzip.ew>>
+| `D^0^[i,:] = A[2i,:] +
+ D^1^[i,:] = A[2i+1,:]`
+| Row unzip (de-interleave rows)
+| <<udb:doc:inst:mrowzip_ew,mrowzip.ew>>
+| `D[2i,:] = A[i,:] +
+ D[2i+1,:] = B[i,:]`
+| Row zip (interleave rows from two inputs)
+| <<udb:doc:inst:mscatadd_col,mscatadd.col>>
+| `D[B[i,j], j] += A[i,j]`
+| Elementwise column scatter-add
+| <<udb:doc:inst:mscatadd_row,mscatadd.row>>
+| `D[i, B[i,j]] += A[i,j]`
+| Elementwise scatter-add
+| <<udb:doc:inst:mscatmax_col,mscatmax.col>>
+| `D[B[i,j], j] = max(D[B[i,j],j], A[i,j])`
+| Elementwise column scatter-max
+| <<udb:doc:inst:mscatmax_row,mscatmax.row>>
+| `D[i, B[i,j]] = max(D[i,B[i,j]], A[i,j])`
+| Elementwise scatter-max
+| <<udb:doc:inst:mshift_ew,mshift.ew>>
+| `D[i,j] = A[i, j+imm]`
+| Elementwise row shift by constant offset
+|===
+
+==== Register move / data conversion
+
+`<<udb:doc:inst:mmov_m_m,mmov.m.m>>` copies all elements from one `M` register to another.
+`<<udb:doc:inst:mmov_a_m,mmov.a.m>>` copies all elements from an `Acc` register to an `M` register.
+In both cases, the source and destination datatypes must match; if they differ, `amestatus.UN` is set and the destination is left unchanged.
+
+`<<udb:doc:inst:mzero_2d,mzero.2d>>` writes zero to every element of an `Acc` register,
+typically used to initialize an accumulator before a matrix multiply sequence.
+
+[cols="1,2,3",options="header"]
+|===
+| Instruction | Operation | Description
+| <<udb:doc:inst:mmov_a_m,mmov.a.m>>
+| `D[i] = acc[i]`
+| Elementwise unconditional move from accumulator to M register
+| <<udb:doc:inst:mmov_m_m,mmov.m.m>>
+| `D[i] = A[i]`
+| Elementwise unconditional move between M registers
+| <<udb:doc:inst:mzero_2d,mzero.2d>>
+| `C = 0`
+| Clear accumulator tile
+|===
+
+`<<udb:doc:inst:mconv_ew,mconv.ew>>` converts element data from one datatype to another.
+An expand converts a single packed `M` register (storage-only dtype) into `pack_factor` consecutive
+compute-dtype `M` registers; a compress does the reverse.
+
+==== Scalars
+
+In any AME implementation, software can use scalar broadcast instructions to use the same scalar
+value with every element.
+For example, software can implement elementwise add by a common constant using a scalar broadcast
+followed by an elementwise add.
+
+An optional extension, `Zvames`, provides instructions that take scalars as an input for elementwise
+operations.
+With `Zvames`, elementwise add by a common constant is a single instruction.
+
+===== Scalar broadcast
+
+AME provides two instructions to fill every element of an M register with a single scalar value,
+analogous to `np.full_like`. The element size is determined by the register's programmed datatype.
+Both compute and storage-only dtypes are supported; for storage-only dtypes all
+`pack_factor * AME_NELEM` element positions are filled.
+
+`<<udb:doc:inst:mbcast_x,mbcast.x>>` sources the scalar from an integer (`X`) register.
+`<<udb:doc:inst:mbcast_f,mbcast.f>>` sources the scalar from a floating-point (`F`) register
+and requires the F extension; software is responsible for placing the correctly-formatted
+bit pattern for the destination datatype into the F register beforehand.
+
+[cols="1,2,3",options="header"]
+|===
+| Instruction | Operation | Description
+| <<udb:doc:inst:mbcast_x,mbcast.x>>
+| `D[i] = xs1`
+| Broadcast integer scalar to all elements of a square
+|===
+
+===== Scalar operand instructions
+
+When a scalar is used as an operand, its type either comes from one of the AME datatype registers
+or is pre-determined (for example, a constant exponent operand is always an XLEN-bit integer).
+
+[cols="1,2,3",options="header"]
+|===
+| Instruction | Operation | Description
+| <<udb:doc:inst:mbcast_x,mbcast.x>>
+| `D[i] = xs1`
+| Broadcast integer scalar to all elements of a square
+|===
+
+==== Load and store
+
+The row-major and column-major interoperability instructions (`mls.rm`, `mls.cm`, `mss.rm`, `mss.cm`)
+support both compute and storage-only datatypes. Data is always transferred as a single
+contiguous block — no striding, partial-tile, or predicated variants exist.
+
+For *compute datatypes* (size >= `AME_UNIT_DATATYPE_SIZE`), one square is transferred
+between memory and one (or more, for wide types) M registers.
+
+For *storage datatypes* (size < `AME_UNIT_DATATYPE_SIZE`), `pack_factor` squares are
+transferred in a single instruction:
+
+* **Load:** `pack_factor` squares are loaded from contiguous memory and packed into a single
+  M register. In row-major format, sub-square `sq` occupies the `sq`-th block of
+  `sqrt(AME_NELEM)` rows in memory. In column-major format, sub-square `sq` occupies the
+  `sq`-th block of `sqrt(AME_NELEM)` columns.
+
+* **Store:** The single packed M register is unpacked and `pack_factor` squares are written
+  to contiguous memory using the same layout.
+
+The typical workflow for storage-only data is:
+
+// not really bash, but it gets us colored # comments
+[source,bash]
+----
+  # Load INT4 data (pack_factor = AME_UNIT_DATATYPE_SIZE / 4 squares per register)
+  li t0, INT4_DTYPE
+  msettyp m0, t0
+  mls.rm m0, a0                  # loads pack_factor INT4 squares into m0
+
+  # Expand INT4 → INT16 before compute
+  li t0, INT16_DTYPE
+  msettyp m4, t0                # m4, m5, ... will hold the expanded squares
+  mconv.ew m4, m0               # expands m0 into m4..m(4+pack_factor-1)
+
+  # Compute using m4..m(4+pack_factor-1) as normal INT16 registers
+  madd.1d m8, m4, m4
+
+  # Optionally compress back to INT4 for storage
+  li t0, INT4_DTYPE
+  msettyp m0, t0
+  mconv.ew m0, m8               # compresses m8..m(8+pack_factor-1) → m0
+  mss.rm m0, a3                  # stores pack_factor INT4 squares from m0
+----
+
+The opaque-format instructions (`mls`, `mss`) transfer the raw M register contents without
+interpreting the datatype and are correct for both compute and storage-only dtypes.
+
+AME includes a mix of precise and imprecise exceptions.
+When exceptions can occur, the precision is indicated. QQQ – more needed.

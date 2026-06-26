@@ -1,0 +1,189 @@
+[[parameters]]
+== Parameters
+:imagesdir: ../images
+
+AME defines the following implementation parameters:
+
+
+
+|===
+| Name | Description
+
+h| <<udb:doc:param:AME_NELEM,AME_NELEM>> | Number of elements in an AME square
+h| <<udb:doc:param:AME_NUM_ACC_REGS,AME_NUM_ACC_REGS>> | Number of implemented AME accumulator registers
+h| <<udb:doc:param:AME_NUM_M_REGS,AME_NUM_M_REGS>> | Number of AME M and Md registers
+h| <<udb:doc:param:AME_UNIMPL_ACC_BEHAVIOR,AME_UNIMPL_ACC_BEHAVIOR>> | Behavior of instructions that reference unimplemented accumulator registers
+h| <<udb:doc:param:AME_UNIMPL_M_BEHAVIOR,AME_UNIMPL_M_BEHAVIOR>> | Behavior of instructions that reference unimplemented AME M registers
+h| <<udb:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>> | The datatype size, in bits, at which exactly one square fits in an M register
+|===
+
+
+<<<
+
+[#udb:doc:param:AME_NELEM]
+=== AME_NELEM
+
+Number of elements in an AME square
+
+Description::
++
+--
+The number of elements in any AME square, which is fixed regardless of datatype.
+
+[NOTE]
+This is _not_ the number of elements stored in an AME M register, but is rather
+(a) the number of elements in an abstract tensor, and
+(b) the number of elements in any M register holding a datatype whose size is equal
+to AME_UNIT_DATATYPE_SIZE.
+
+AME_NELEM must be a power of 4.
+
+--
+
+Type::
+power of four
+
+
+
+<<<
+
+[#udb:doc:param:AME_NUM_ACC_REGS]
+=== AME_NUM_ACC_REGS
+
+Number of implemented AME accumulator registers
+
+Description::
++
+--
+The number of accumulator registers (`Acc`) and their corresponding
+datatype registers (`Ad`) available in an implementation.
+
+When `AME_NUM_ACC_REGS` is 1, only registers `acc0` and `ad0` are available.
+
+When `AME_NUM_ACC_REGS` is 2, registers `acc0-acc1` and `ad0-ad1` are available.
+
+When `AME_NUM_ACC_REGS` is 4, registers `acc0-acc3` and `ad0-ad3` are available.
+
+When `AME_NUM_ACC_REGS` is less than 4, the behavior of instruction encodings that specify an
+unimplemented `acc` register is determined by `AME_UNIMPL_ACC_BEHAVIOR`.
+
+--
+
+Type::
+one of: [1, 2, 4]
+
+
+
+<<<
+
+[#udb:doc:param:AME_NUM_M_REGS]
+=== AME_NUM_M_REGS
+
+Number of AME M and Md registers
+
+Description::
++
+--
+The number of general-purpose matrix registers (`M`) and their corresponding
+datatype registers (`Md`) available in an implementation.
+
+When `AME_NUM_M_REGS` is 16, registers `m0`–`m15` (and `md0`–`md15`) are valid.
+When `AME_NUM_M_REGS` is 32, registers `m0`–`m31` (and `md0`–`md31`) are valid.
+
+Instructions encode register specifiers as 5-bit fields.  When `AME_NUM_M_REGS` is 16,
+any instruction that specifies a register whose 5-bit index has the MSB set
+(i.e., the register index is in the range 16–31) raises an `Illegal Instruction`
+exception.
+
+[IMPORTANT]
+Implementations with different `AME_NUM_M_REGS` values are not binary compatible
+for code that references registers `m16`–`m31`.
+
+--
+
+Type::
+one of: [16, 32]
+
+
+
+<<<
+
+[#udb:doc:param:AME_UNIMPL_ACC_BEHAVIOR]
+=== AME_UNIMPL_ACC_BEHAVIOR
+
+Behavior of instructions that reference unimplemented accumulator registers
+
+Description::
++
+--
+The behavior of instructions that specify an unimplemented accumulator register. Options are:
+
+|===
+| Value | Meaning
+
+h| exception | Instruction raises a precise `Illegal Instruction` exception
+h| undefined | The behavior is undefined
+|===
+
+--
+
+Type::
+one of: [exception, undefined]
+
+
+
+<<<
+
+[#udb:doc:param:AME_UNIMPL_M_BEHAVIOR]
+=== AME_UNIMPL_M_BEHAVIOR
+
+Behavior of instructions that reference unimplemented AME M registers
+
+Description::
++
+--
+The behavior of instructions that specify an unimplemented M register. Options are:
+
+|===
+| Value | Meaning
+
+h| exception | Instruction raises a precise `Illegal Instruction` exception
+h| undefined | The behavior is undefined
+|===
+
+--
+
+Type::
+one of: [exception, undefined]
+
+
+
+<<<
+
+[#udb:doc:param:AME_UNIT_DATATYPE_SIZE]
+=== AME_UNIT_DATATYPE_SIZE
+
+The datatype size, in bits, at which exactly one square fits in an M register
+
+Description::
++
+--
+When the datatype size of an M register is:
+
+- Above AME_UNIT_DATATYPE_SIZE, a square is split across multiple M registers.
+- At or below AME_UNIT_DATATYPE_SIZE, a single square will fit in a single M register.
+
+When below AME_UNIT_DATATYPE_SIZE, some space in a M register may be unused.
+
+[IMPORTANT]
+Implementations with different AME_UNIT_DATATYPE_SIZE values are not binary compatible.
+Thus, ecosystems requiring portable binaries (e.g., profiles),
+AME_UNIT_DATATYPE_SIZE must be the same across implementations.
+This parameter enables AME as a standard to scale a wide range of markets.
+
+--
+
+Type::
+positive 64-bit power of two
+
+

@@ -1,0 +1,30 @@
+[[terms]]
+== Glossary
+
+Accumulator Register File (ARF)::
+  An <<udb:doc:param:AME_NUM_ACC_REGS,AME_NUM_ACC_REGS>>-entry register file of accumulator registers (`Acc`).
+  The ARF registers hold the accumulator operand of matrix multiply instructions.
+
+square::
+  A 2-dimensional tensor (matrix) with an equal number of rows and columns.
+  Squares are the fundamental unit of work in AME.
+  All squares are the same size for a given implementation and contain <<udb:doc:param:AME_NELEM,AME_NELEM>> elements regardless
+  of datatype.
+  A square may fit in part of, exactly one, or multiple tensor registers, depending on the datatype
+  of elements in the square and the implementation-defined parameter <<udb:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>>.
+
+polymorphic register::
+  A register whose datatype is determined by a programmable sidecar
+  (rather than being determined by the instruction encoding referencing the register).
+  In AME, both ARF and TRF registers are polymorphic.
+  The datatype of TRF (`M`) registers is managed with the `msettyp` and `mgettyp` instructions.
+  The datatype of ARF (`Acc`) registers is managed with the `asettyp` and `agettyp` instructions.
+
+tensor register::
+  A register in either the Tensor Register File (TRF) or Accumulator Register File (ARF).
+  Tensor registers are polymorphic.
+
+Tensor Register File (TRF)::
+  An <<udb:doc:param:AME_NUM_M_REGS,AME_NUM_M_REGS>>-entry register file of matrix registers (`M`).
+  A tensor may hold multiple, one, or part of a square, depending on the datatype and the
+  implementation-defined parameter <<udb:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>>.

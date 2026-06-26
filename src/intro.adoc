@@ -1,0 +1,45 @@
+[[intro]]
+== Introduction
+
+The Attached Matrix Extension (AME) adds instructions to accelerate tensor codes at the heart of many machine learning and HPC applications. It has the following goals:
+
+Scalable::
+*	AME targets markets ranging from low-power embedded edge to datacenter and HPC.
+*	Due to the extreme range of target designs, some AME implementation parameters affect binary compatibility. Thus, code compiled for one AME implementation may not run another, though profiles are expected to constrain parameters so that binaries are compatible within a market.
+
+Isolated::
+*	AME is designed to work well on tensor codes regardless of whether the host hart implements RISC-V Vector (RVV). Implementing RVV is not a prerequisite of AME. Frequently moving state between RVV and AME may degrade performance on some implementations.
+
+Detachable::
+*	AME is designed to allow harts to physically share an AME execution unit, and includes features to manage resource contention. Sharing execution units is an option, and many implementations may choose dedicated units.
+
+
+===	Comparison to other RISC-V matrix extensions
+
+RISC-V has defined/is defining three independent matrix extensions:
+AME, Vector Matrix Extension (VME), and Integrated Matrix Extension (IME).
+These extensions all share the goal of accelerating tensor codes with new instructions in a
+RISC-V hart, but differ due to incompatible design tradeoffs.
+The table below summarizes the key differences.
+
+[cols="1,1,1,1"]
+|===
+| | AME | VME | IME
+
+h| Matrix State | Two new register files | One new register file | In vector registers
+h| Vector operations | New instructions | RVV | RVV
+h| Matrix multiply | Primitive instruction | Sum of outer product | ?
+h| Resouce Management | Included | ? | N/A
+h| Datatypes | Polymorhpic ISA | ? | ?
+h| Tensor layout | Supports both standard (row-major) and implementaion-specic layouts | ? | ?
+h| Traps | Mix of precise and imprecise | Precise | Precise
+h| Memory model | Weaker than RVWMO | ? | RVWMO
+|===
+
+=== State of the specification
+
+Open TODO items:
+
+* Formal memory model definition
+* State management for shared AME engines
+* menvcfg options

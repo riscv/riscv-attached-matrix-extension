@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 22 900 218" font-family="Arial, sans-serif">
+
+  <rect width="900" height="240" fill="white"/>
+
+  <!-- ══════════════════════════════════════════════════
+       MATRICES  (tile = 40px, grids start at y=38)
+       A [M×K]: 3-col × 4-row  at (28, 38)   right=148, bottom=198
+       B [K×P]: 4-col × 3-row  at (194, 38)  right=354, bottom=158
+       C [M×P]: 4-col × 4-row  at (430, 38)  right=590, bottom=198
+       Snapshot: i_tile=1, k_tile=1, j_tile=2
+       ══════════════════════════════════════════════════ -->
+
+  <!-- ─── MATRIX A ─── -->
+
+  <!-- Strip: row i=1 (y 78→118) — light blue -->
+  <rect x="28"  y="78"  width="120" height="40" fill="#bfdbfe" opacity="0.8"/>
+  <!-- Strip: col k=1 (x 68→108) — light green -->
+  <rect x="68"  y="38"  width="40"  height="160" fill="#bbf7d0" opacity="0.7"/>
+  <!-- Active tile A[1,1] -->
+  <rect x="68"  y="78"  width="40"  height="40"  fill="#2563eb"/>
+  <text x="88"  y="102" text-anchor="middle" font-size="8.5" fill="white" font-weight="bold">A[1,1]</text>
+
+  <!-- Grid outline and interior lines -->
+  <rect x="28"  y="38"  width="120" height="160" fill="none" stroke="#334155" stroke-width="1.5"/>
+  <line x1="68"  y1="38"  x2="68"  y2="198" stroke="#94a3b8" stroke-width="0.7"/>
+  <line x1="108" y1="38"  x2="108" y2="198" stroke="#94a3b8" stroke-width="0.7"/>
+  <line x1="28"  y1="78"  x2="148" y2="78"  stroke="#94a3b8" stroke-width="0.7"/>
+  <line x1="28"  y1="118" x2="148" y2="118" stroke="#94a3b8" stroke-width="0.7"/>
+  <line x1="28"  y1="158" x2="148" y2="158" stroke="#94a3b8" stroke-width="0.7"/>
+
+  <!-- Labels -->
+  <text x="88"  y="32"  text-anchor="middle" font-size="12"  font-weight="bold" fill="#1e293b">A [M×K]</text>
+  <text x="88"  y="212" text-anchor="middle" font-size="10"  fill="#64748b">K = 3N cols</text>
+  <text x="14"  y="121" text-anchor="middle" font-size="10"  fill="#64748b" transform="rotate(-90,14,121)">M = 4N rows</text>
+
+  <!-- N dimension tick: bottom of first column -->
+  <line x1="28" y1="201" x2="68"  y2="201" stroke="#94a3b8" stroke-width="0.8"/>
+  <line x1="28" y1="199" x2="28"  y2="203" stroke="#94a3b8" stroke-width="0.8"/>
+  <line x1="68" y1="199" x2="68"  y2="203" stroke="#94a3b8" stroke-width="0.8"/>
+  <text x="48"  y="212" text-anchor="middle" font-size="9.5" fill="#475569">N</text>
+
+  <!-- N dimension tick: right of first row -->
+  <line x1="151" y1="38" x2="151" y2="78"  stroke="#94a3b8" stroke-width="0.8"/>
+  <line x1="149" y1="38" x2="153" y2="38"  stroke="#94a3b8" stroke-width="0.8"/>
+  <line x1="149" y1="78" x2="153" y2="78"  stroke="#94a3b8" stroke-width="0.8"/>
+  <text x="158"  y="62" font-size="9.5" fill="#475569">N</text>
+
+  <!-- × operator -->
+  <text x="171" y="128" text-anchor="middle" font-size="22" fill="#334155">×</text>
+
+  <!-- ─── MATRIX B ─── -->
+
+  <!-- Strip: row k=1 (y 78→118) — light green -->
+  <rect x="194" y="78"  width="160" height="40"  fill="#bbf7d0" opacity="0.8"/>
+  <!-- Strip: col j=2 (x 274→314) — light orange -->
+  <rect x="274" y="38"  width="40"  height="120" fill="#fed7aa" opacity="0.7"/>
+  <!-- Active tile B[1,2] -->
+  <rect x="274" y="78"  width="40"  height="40"  fill="#16a34a"/>
+  <text x="294" y="102" text-anchor="middle" font-size="8.5" fill="white" font-weight="bold">B[1,2]</text>
+
+  <!-- Grid -->
+  <rect x="194" y="38"  width="160" height="120" fill="none" stroke="#334155" stroke-width="1.5"/>
+  <line x1="234" y1="38"  x2="234" y2="158" stroke="#94a3b8" stroke-width="0.7"/>
+  <line x1="274" y1="38"  x2="274" y2="158" stroke="#94a3b8" stroke-width="0.7"/>
+  <line x1="314" y1="38"  x2="314" y2="158" stroke="#94a3b8" stroke-width="0.7"/>
+  <line x1="194" y1="78"  x2="354" y2="78"  stroke="#94a3b8" stroke-width="0.7"/>
+  <line x1="194" y1="118" x2="354" y2="118" stroke="#94a3b8" stroke-width="0.7"/>
+
+  <!-- Labels -->
+  <text x="274" y="32"  text-anchor="middle" font-size="12"  font-weight="bold" fill="#1e293b">B [K×P]</text>
+  <text x="274" y="173" text-anchor="middle" font-size="10"  fill="#64748b">P = 4N cols</text>
+
+  <!-- Arrow B → C -->
+  <defs>
+    <marker id="ah" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#475569"/>
+    </marker>
+  </defs>
+  <line x1="358" y1="98" x2="426" y2="98" stroke="#475569" stroke-width="1.5" marker-end="url(#ah)"/>
+  <text x="392" y="92"  text-anchor="middle" font-size="9" fill="#475569">k-loop</text>
+  <text x="392" y="112" text-anchor="middle" font-size="9" fill="#475569">→ acc0</text>
+
+  <!-- ─── MATRIX C ─── -->
+
+  <!-- Strip: row i=1 (y 78→118) — light blue -->
+  <rect x="430" y="78"  width="160" height="40"  fill="#bfdbfe" opacity="0.8"/>
+  <!-- Strip: col j=2 (x 510→550) — light orange -->
+  <rect x="510" y="38"  width="40"  height="160" fill="#fed7aa" opacity="0.7"/>
+  <!-- Active tile C[1,2] -->
+  <rect x="510" y="78"  width="40"  height="40"  fill="#d97706"/>
+  <text x="530" y="102" text-anchor="middle" font-size="8.5" fill="white" font-weight="bold">C[1,2]</text>
+
+  <!-- Grid -->
+  <rect x="430" y="38"  width="160" height="160" fill="none" stroke="#334155" stroke-width="1.5"/>
+  <line x1="470" y1="38"  x2="470" y2="198" stroke="#94a3b8" stroke-width="0.7"/>
+  <line x1="510" y1="38"  x2="510" y2="198" stroke="#94a3b8" stroke-width="0.7"/>
+  <line x1="550" y1="38"  x2="550" y2="198" stroke="#94a3b8" stroke-width="0.7"/>
+  <line x1="430" y1="78"  x2="590" y2="78"  stroke="#94a3b8" stroke-width="0.7"/>
+  <line x1="430" y1="118" x2="590" y2="118" stroke="#94a3b8" stroke-width="0.7"/>
+  <line x1="430" y1="158" x2="590" y2="158" stroke="#94a3b8" stroke-width="0.7"/>
+
+  <!-- Labels -->
+  <text x="510" y="32"  text-anchor="middle" font-size="12"  font-weight="bold" fill="#1e293b">C [M×P]</text>
+
+  <!-- ─── LEGEND ─── -->
+  <rect x="614" y="30" width="272" height="185" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1" rx="4"/>
+  <text x="750" y="47" text-anchor="middle" font-size="11" font-weight="bold" fill="#334155">Legend</text>
+
+  <rect x="626" y="55"  width="14" height="12" fill="#bfdbfe"/>
+  <text x="646" y="66"  font-size="10" fill="#374151">i_tile row  (outer loop over M)</text>
+
+  <rect x="626" y="73"  width="14" height="12" fill="#bbf7d0"/>
+  <text x="646" y="84"  font-size="10" fill="#374151">k_tile strip  (inner reduction)</text>
+
+  <rect x="626" y="91"  width="14" height="12" fill="#fed7aa"/>
+  <text x="646" y="102" font-size="10" fill="#374151">j_tile col  (middle loop over P)</text>
+
+  <rect x="626" y="109" width="14" height="12" fill="#2563eb"/>
+  <text x="646" y="120" font-size="10" fill="#374151">A[i,k] — active input tile</text>
+
+  <rect x="626" y="127" width="14" height="12" fill="#16a34a"/>
+  <text x="646" y="138" font-size="10" fill="#374151">B[k,j] — active input tile</text>
+
+  <rect x="626" y="145" width="14" height="12" fill="#d97706"/>
+  <text x="646" y="156" font-size="10" fill="#374151">C[i,j] — output tile (acc0)</text>
+
+  <line x1="622" y1="167" x2="880" y2="167" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="750" y="181" text-anchor="middle" font-size="9.5" fill="#64748b">Snapshot: i=1, k=1, j=2</text>
+  <text x="750" y="196" text-anchor="middle" font-size="9.5" fill="#64748b">M=K=P=4N  (4×4 tile grid shown)</text>
+
+</svg>

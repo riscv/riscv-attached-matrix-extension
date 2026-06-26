@@ -1,0 +1,2222 @@
+[[functions]]
+== Formal model functions
+:imagesdir: ../images
+:source-highlighter: rouge
+
+
+
+
+[#udb:doc:func:ame_datatype_supported]
+=== `ame_datatype_supported` (builtin)
+Returns true if dtype is a supported datatype, false otherwise.
+
+Returns false if dtype is 0 (no datatype).
+Returns false if dtype is not a known datatype ID.
+  
+
+|===
+h| Return Type l| Boolean
+h| Arguments   l| Bits<32> dtype
+|===
+
+
+[#udb:doc:func:ame_op_supported]
+=== `ame_op_supported`
+Returns true if src1 op src2 = dest is a supported operation for the given datatypes
+  
+
+|===
+h| Return Type l| Boolean
+h| Arguments   l| AmeOperation op, Bits<8> dest_dtype, Bits<8> src1_dtype, Bits<8> src2_dtype
+|===
+
+[subs="specialchars,macros"]
+----
+return true;
+----
+
+[#udb:doc:func:ame_dtype_is_storage_only]
+=== `ame_dtype_is_storage_only`
+Returns true if dtype_val is a storage-only datatype: its size in bits (bits 7:0) is
+greater than zero and less than AME_UNIT_DATATYPE_SIZE.
+Storage-only datatypes are packed in M registers (pack_factor = AME_UNIT_DATATYPE_SIZE / size
+squares per register) and cannot be used as operands in compute instructions.
+  
+
+|===
+h| Return Type l| Boolean
+h| Arguments   l| Bits<32> dtype_val
+|===
+
+[subs="specialchars,macros"]
+----
+U32 size = dtype_val[7:0];
+return size > 0 && size < AME_UNIT_DATATYPE_SIZE;
+----
+
+[#udb:doc:func:ame_dtype_val_to_size]
+=== `ame_dtype_val_to_size`
+Given an integral datatype value, return the size of the datatype in bits
+  
+
+|===
+h| Return Type l| Bits<AME_MAX_DTYPE_SIZE>
+h| Arguments   l| Bits<AME_DTYPE_WIDTH> dtype_val
+|===
+
+[subs="specialchars,macros"]
+----
+return dtype_val[7:0];
+----
+
+[#udb:doc:func:implemented?]
+=== `implemented?` (generated)
+Return true if the implementation supports `extension`.
+  
+
+|===
+h| Return Type l| Boolean
+h| Arguments   l| ExtensionName extension
+|===
+
+
+[#udb:doc:func:mode]
+=== `mode`
+Returns the current active privilege mode.
+  
+
+|===
+h| Return Type l| PrivilegeMode
+h| Arguments   l| 
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(](!<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::S)) && (!<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::U)) && (!<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::H))) {
+  return PrivilegeMode::M;
+} else {
+  return current_mode;
+}
+----
+
+[#udb:doc:func:unpredictable]
+=== `unpredictable` (builtin)
+Indicate that the hart has reached a state that is unpredictable because the
+RISC-V spec allows multiple behaviors. Generally, this will be a fatal condition
+to any emulation, since it is unclear what to do next.
+
+The single argument _why_ is a string describing why the hart entered an
+unpredictable state.
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| String why
+|===
+
+
+[#udb:doc:func:unreachable]
+=== `unreachable` (builtin)
+Indicate that the IDL line should be unreachable.
+
+If this function is called, it represents a bug in the IDL code.
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| 
+|===
+
+
+[#udb:doc:func:exception_handling_mode]
+=== `exception_handling_mode`
+Returns the target privilege mode that will handle synchronous exception `exception_code`
+  
+
+|===
+h| Return Type l| PrivilegeMode
+h| Arguments   l| ExceptionCode exception_code
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(]<<udb:doc:func:mode,mode>>pass:[(]) == PrivilegeMode::M) {
+  return PrivilegeMode::M;
+} else if pass:[(]<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::S) && ((<<udb:doc:func:mode,mode>>pass:[(]) == PrivilegeMode::HS) || (<<udb:doc:func:mode,mode>>pass:[(]) == PrivilegeMode::U))) {
+  if pass:[(]($bits(CSR[<<udb:doc:csr:medeleg,CSR[medeleg]>>]) & (MXLEN'1 << $bits(exception_code))) != 0) {
+    return PrivilegeMode::HS;
+  } else {
+    return PrivilegeMode::M;
+  }
+} else if pass:[(]<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::H) && ((<<udb:doc:func:mode,mode>>pass:[(]) == PrivilegeMode::VS) || (<<udb:doc:func:mode,mode>>pass:[(]) == PrivilegeMode::VU))) {
+  if pass:[(]($bits(CSR[<<udb:doc:csr:medeleg,CSR[medeleg]>>]) & (MXLEN'1 << $bits(exception_code))) != 0) {
+    if pass:[(]($bits(CSR[<<udb:doc:csr:hedeleg,CSR[hedeleg]>>]) & (MXLEN'1 << $bits(exception_code))) != 0) {
+      return PrivilegeMode::VS;
+    } else {
+      return PrivilegeMode::HS;
+    }
+  } else {
+    return PrivilegeMode::M;
+  }
+} else {
+  <<udb:doc:func:unreachable,unreachable>>pass:[(]);
+}
+----
+
+[#udb:doc:func:mtval_readonly?]
+=== `mtval_readonly?`
+Returns whether or not CSR[mtval] is read-only based on implementation options
+  
+
+|===
+h| Return Type l| Boolean
+h| Arguments   l| 
+|===
+
+[subs="specialchars,macros"]
+----
+return !(REPORT_VA_IN_MTVAL_ON_BREAKPOINT || REPORT_VA_IN_MTVAL_ON_LOAD_MISALIGNED || REPORT_VA_IN_MTVAL_ON_STORE_AMO_MISALIGNED || REPORT_VA_IN_MTVAL_ON_INSTRUCTION_MISALIGNED || REPORT_VA_IN_MTVAL_ON_LOAD_ACCESS_FAULT || REPORT_VA_IN_MTVAL_ON_STORE_AMO_ACCESS_FAULT || REPORT_VA_IN_MTVAL_ON_INSTRUCTION_ACCESS_FAULT || REPORT_VA_IN_MTVAL_ON_LOAD_PAGE_FAULT || REPORT_VA_IN_MTVAL_ON_STORE_AMO_PAGE_FAULT || REPORT_VA_IN_MTVAL_ON_INSTRUCTION_PAGE_FAULT || REPORT_ENCODING_IN_MTVAL_ON_ILLEGAL_INSTRUCTION || REPORT_CAUSE_IN_MTVAL_ON_SHADOW_STACK_SOFTWARE_CHECK || REPORT_CAUSE_IN_MTVAL_ON_LANDING_PAD_SOFTWARE_CHECK);
+----
+
+[#udb:doc:func:mtval_for]
+=== `mtval_for`
+Given an exception code and a *legal* non-zero value for mtval,
+returns the value to be written in mtval considering implementation options
+  
+
+|===
+h| Return Type l| XReg
+h| Arguments   l| ExceptionCode exception_code, XReg tval
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(]exception_code == ExceptionCode::Breakpoint) {
+  return REPORT_VA_IN_MTVAL_ON_BREAKPOINT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::LoadAddressMisaligned) {
+  return REPORT_VA_IN_MTVAL_ON_LOAD_MISALIGNED ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::StoreAmoAddressMisaligned) {
+  return REPORT_VA_IN_MTVAL_ON_STORE_AMO_MISALIGNED ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::InstructionAddressMisaligned) {
+  return REPORT_VA_IN_MTVAL_ON_INSTRUCTION_MISALIGNED ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::LoadAccessFault) {
+  return REPORT_VA_IN_MTVAL_ON_LOAD_ACCESS_FAULT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::StoreAmoAccessFault) {
+  return REPORT_VA_IN_MTVAL_ON_STORE_AMO_ACCESS_FAULT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::InstructionAccessFault) {
+  return REPORT_VA_IN_MTVAL_ON_INSTRUCTION_ACCESS_FAULT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::LoadPageFault) {
+  return REPORT_VA_IN_MTVAL_ON_LOAD_PAGE_FAULT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::StoreAmoPageFault) {
+  return REPORT_VA_IN_MTVAL_ON_STORE_AMO_PAGE_FAULT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::InstructionPageFault) {
+  return REPORT_VA_IN_MTVAL_ON_INSTRUCTION_PAGE_FAULT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::IllegalInstruction) {
+  return REPORT_ENCODING_IN_MTVAL_ON_ILLEGAL_INSTRUCTION ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::SoftwareCheck) {
+  return tval;
+} else {
+  return 0;
+}
+----
+
+[#udb:doc:func:stval_readonly?]
+=== `stval_readonly?`
+Returns whether or not CSR[stval] is read-only based on implementation options
+  
+
+|===
+h| Return Type l| Boolean
+h| Arguments   l| 
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(]<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::S)) {
+  return !(REPORT_VA_IN_STVAL_ON_BREAKPOINT || REPORT_VA_IN_STVAL_ON_LOAD_MISALIGNED || REPORT_VA_IN_STVAL_ON_STORE_AMO_MISALIGNED || REPORT_VA_IN_STVAL_ON_INSTRUCTION_MISALIGNED || REPORT_VA_IN_STVAL_ON_LOAD_ACCESS_FAULT || REPORT_VA_IN_STVAL_ON_STORE_AMO_ACCESS_FAULT || REPORT_VA_IN_STVAL_ON_INSTRUCTION_ACCESS_FAULT || REPORT_VA_IN_STVAL_ON_LOAD_PAGE_FAULT || REPORT_VA_IN_STVAL_ON_STORE_AMO_PAGE_FAULT || REPORT_VA_IN_STVAL_ON_INSTRUCTION_PAGE_FAULT || REPORT_ENCODING_IN_STVAL_ON_ILLEGAL_INSTRUCTION || REPORT_CAUSE_IN_STVAL_ON_SHADOW_STACK_SOFTWARE_CHECK || REPORT_CAUSE_IN_STVAL_ON_LANDING_PAD_SOFTWARE_CHECK);
+} else {
+  return true;
+}
+----
+
+[#udb:doc:func:stval_for]
+=== `stval_for`
+Given an exception code and a *legal* non-zero value for stval,
+returns the value to be written in stval considering implementation options
+  
+
+|===
+h| Return Type l| XReg
+h| Arguments   l| ExceptionCode exception_code, XReg tval
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(]exception_code == ExceptionCode::Breakpoint) {
+  return REPORT_VA_IN_STVAL_ON_BREAKPOINT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::LoadAddressMisaligned) {
+  return REPORT_VA_IN_STVAL_ON_LOAD_MISALIGNED ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::StoreAmoAddressMisaligned) {
+  return REPORT_VA_IN_STVAL_ON_STORE_AMO_MISALIGNED ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::InstructionAddressMisaligned) {
+  return REPORT_VA_IN_STVAL_ON_INSTRUCTION_MISALIGNED ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::LoadAccessFault) {
+  return REPORT_VA_IN_STVAL_ON_LOAD_ACCESS_FAULT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::StoreAmoAccessFault) {
+  return REPORT_VA_IN_STVAL_ON_STORE_AMO_ACCESS_FAULT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::InstructionAccessFault) {
+  return REPORT_VA_IN_STVAL_ON_INSTRUCTION_ACCESS_FAULT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::LoadPageFault) {
+  return REPORT_VA_IN_STVAL_ON_LOAD_PAGE_FAULT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::StoreAmoPageFault) {
+  return REPORT_VA_IN_STVAL_ON_STORE_AMO_PAGE_FAULT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::InstructionPageFault) {
+  return REPORT_VA_IN_STVAL_ON_INSTRUCTION_PAGE_FAULT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::IllegalInstruction) {
+  return REPORT_ENCODING_IN_STVAL_ON_ILLEGAL_INSTRUCTION ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::SoftwareCheck) {
+  return tval;
+} else {
+  return 0;
+}
+----
+
+[#udb:doc:func:vstval_readonly?]
+=== `vstval_readonly?`
+Returns whether or not CSR[vstval] is read-only based on implementation options
+  
+
+|===
+h| Return Type l| Boolean
+h| Arguments   l| 
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(]<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::H)) {
+  return !(REPORT_VA_IN_VSTVAL_ON_BREAKPOINT || REPORT_VA_IN_VSTVAL_ON_LOAD_MISALIGNED || REPORT_VA_IN_VSTVAL_ON_STORE_AMO_MISALIGNED || REPORT_VA_IN_VSTVAL_ON_INSTRUCTION_MISALIGNED || REPORT_VA_IN_VSTVAL_ON_LOAD_ACCESS_FAULT || REPORT_VA_IN_VSTVAL_ON_STORE_AMO_ACCESS_FAULT || REPORT_VA_IN_VSTVAL_ON_INSTRUCTION_ACCESS_FAULT || REPORT_VA_IN_VSTVAL_ON_LOAD_PAGE_FAULT || REPORT_VA_IN_VSTVAL_ON_STORE_AMO_PAGE_FAULT || REPORT_VA_IN_VSTVAL_ON_INSTRUCTION_PAGE_FAULT || REPORT_ENCODING_IN_VSTVAL_ON_ILLEGAL_INSTRUCTION || REPORT_CAUSE_IN_VSTVAL_ON_SHADOW_STACK_SOFTWARE_CHECK || REPORT_CAUSE_IN_VSTVAL_ON_LANDING_PAD_SOFTWARE_CHECK);
+} else {
+  return true;
+}
+----
+
+[#udb:doc:func:vstval_for]
+=== `vstval_for`
+Given an exception code and a *legal* non-zero value for vstval,
+returns the value to be written in vstval considering implementation options
+  
+
+|===
+h| Return Type l| XReg
+h| Arguments   l| ExceptionCode exception_code, XReg tval
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(]exception_code == ExceptionCode::Breakpoint) {
+  return REPORT_VA_IN_VSTVAL_ON_BREAKPOINT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::LoadAddressMisaligned) {
+  return REPORT_VA_IN_VSTVAL_ON_LOAD_MISALIGNED ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::StoreAmoAddressMisaligned) {
+  return REPORT_VA_IN_VSTVAL_ON_STORE_AMO_MISALIGNED ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::InstructionAddressMisaligned) {
+  return REPORT_VA_IN_VSTVAL_ON_INSTRUCTION_MISALIGNED ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::LoadAccessFault) {
+  return REPORT_VA_IN_VSTVAL_ON_LOAD_ACCESS_FAULT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::StoreAmoAccessFault) {
+  return REPORT_VA_IN_VSTVAL_ON_STORE_AMO_ACCESS_FAULT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::InstructionAccessFault) {
+  return REPORT_VA_IN_VSTVAL_ON_INSTRUCTION_ACCESS_FAULT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::LoadPageFault) {
+  return REPORT_VA_IN_VSTVAL_ON_LOAD_PAGE_FAULT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::StoreAmoPageFault) {
+  return REPORT_VA_IN_VSTVAL_ON_STORE_AMO_PAGE_FAULT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::InstructionPageFault) {
+  return REPORT_VA_IN_VSTVAL_ON_INSTRUCTION_PAGE_FAULT ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::IllegalInstruction) {
+  return REPORT_ENCODING_IN_VSTVAL_ON_ILLEGAL_INSTRUCTION ? tval : 0;
+} else if pass:[(]exception_code == ExceptionCode::SoftwareCheck) {
+  return tval;
+} else {
+  return 0;
+}
+----
+
+[#udb:doc:func:notify_mode_change]
+=== `notify_mode_change` (builtin)
+Called whenever the privilege mode changes. Downstream tools can use this to hook events.
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| PrivilegeMode new_mode, PrivilegeMode old_mode
+|===
+
+
+[#udb:doc:func:implemented_version?]
+=== `implemented_version?` (generated)
+Return true if the implementation supports `extension` meeting 'version_requirement'.
+  
+
+|===
+h| Return Type l| Boolean
+h| Arguments   l| ExtensionName extension, String version_requirement
+|===
+
+
+[#udb:doc:func:refresh_pending_interrupts]
+=== `refresh_pending_interrupts`
+refreshes the calculation of a pending interrupt
+
+needs to be called after any state update that could change a pending interrupt. This includes:
+   - CSR[mip]
+   - CSR[mie]
+   - CSR[mstatus].MIE
+   - CSR[mstatus].SIE
+   - CSR[vsstatus].SIE
+   - CSR[mideleg]
+   - CSR[sideleg]
+   - CSR[hideleg]
+   - CSR[hvip]
+   - CSR[hgeip]
+   - CSR[hgeie]
+   - mode changes
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| 
+|===
+
+[subs="specialchars,macros"]
+----
+Bits<MXLEN> pending_ints = CSR[<<udb:doc:csr:mip,CSR[mip]>>].sw_read() & $bits(CSR[<<udb:doc:csr:mie,CSR[mie]>>]);
+if pass:[(]pending_ints == 0) {
+  pending_and_enabled_interrupts = 0;
+  return ;
+}
+Boolean HAS_MIDELEG = <<udb:doc:func:implemented_version?,implemented_version?>>pass:[(]ExtensionName::S, "<= 1.9.1") || (<<udb:doc:func:implemented_version?,implemented_version?>>pass:[(]ExtensionName::S, "> 1.9.1") && <<udb:doc:func:implemented_version?,implemented_version?>>pass:[(]ExtensionName::Sm, "> 1.9.1"));
+Bits<MXLEN> mmode_enabled_ints = ((<<udb:doc:func:mode,mode>>pass:[(]) == PrivilegeMode::M) && (CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:MIE,MIE>> == 1'b0)) ? 0 : ($bits(CSR[<<udb:doc:csr:mie,CSR[mie]>>]) & (HAS_MIDELEG ? ~$bits(CSR[<<udb:doc:csr:mideleg,CSR[mideleg]>>]) : ~MXLEN'0));
+Bits<MXLEN> mmode_pending_and_enabled = pending_ints & mmode_enabled_ints;
+if pass:[(]mmode_pending_and_enabled != 0) {
+  pending_and_enabled_interrupts = mmode_pending_and_enabled;
+  return ;
+}
+if pass:[(]CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:S,S>> == 1'b1) {
+  Bits<MXLEN> smode_enabled_ints = ((<<udb:doc:func:mode,mode>>pass:[(]) == PrivilegeMode::M) || (CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:SIE,SIE>> == 1'b0)) ? 0 : $bits(CSR[<<udb:doc:csr:mie,CSR[mie]>>]) & ($bits(CSR[<<udb:doc:csr:mideleg,CSR[mideleg]>>]));
+  Bits<MXLEN> smode_pending_and_enabled = pending_ints & smode_enabled_ints;
+  if pass:[(]smode_pending_and_enabled != 0) {
+    pending_and_enabled_interrupts = smode_pending_and_enabled;
+    return ;
+  }
+}
+pending_and_enabled_interrupts = 0;
+----
+
+[#udb:doc:func:set_mode]
+=== `set_mode`
+Set the current privilege mode to `new_mode`
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| PrivilegeMode new_mode
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(]new_mode != current_mode) {
+  <<udb:doc:func:notify_mode_change,notify_mode_change>>pass:[(]new_mode, current_mode);
+  current_mode = new_mode;
+  <<udb:doc:func:refresh_pending_interrupts,refresh_pending_interrupts>>pass:[(]);
+}
+----
+
+[#udb:doc:func:abort_current_instruction]
+=== `abort_current_instruction` (builtin)
+Abort the current instruction, and start refetching from $pc.
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| 
+|===
+
+
+[#udb:doc:func:raise_precise]
+=== `raise_precise`
+Raise synchronous exception number `exception_code`.
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| ExceptionCode exception_code, PrivilegeMode from_mode, XReg tval
+|===
+
+[subs="specialchars,macros"]
+----
+PrivilegeMode handling_mode = <<udb:doc:func:exception_handling_mode,exception_handling_mode>>pass:[(]exception_code);
+if pass:[(]handling_mode == PrivilegeMode::M) {
+  CSR[<<udb:doc:csr:mepc,mepc>>].<<udb:doc:csr_field:mepc:PC,PC>> = $pc;
+  if pass:[(]!<<udb:doc:func:mtval_readonly?,mtval_readonly?>>pass:[(])) {
+    CSR[<<udb:doc:csr:mtval,mtval>>].<<udb:doc:csr_field:mtval:VALUE,VALUE>> = <<udb:doc:func:mtval_for,mtval_for>>pass:[(]exception_code, tval);
+  }
+  $pc = {CSR[<<udb:doc:csr:mtvec,mtvec>>].<<udb:doc:csr_field:mtvec:BASE,BASE>>, 2'b00};
+  CSR[<<udb:doc:csr:mcause,mcause>>].<<udb:doc:csr_field:mcause:INT,INT>> = 1'b0;
+  CSR[<<udb:doc:csr:mcause,mcause>>].<<udb:doc:csr_field:mcause:CODE,CODE>> = $bits(exception_code);
+  if pass:[(]<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::H) && CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:H,H>> == 1) {
+    CSR[<<udb:doc:csr:mtval2,mtval2>>].<<udb:doc:csr_field:mtval2:VALUE,VALUE>> = 0;
+    CSR[<<udb:doc:csr:mtinst,mtinst>>].<<udb:doc:csr_field:mtinst:VALUE,VALUE>> = 0;
+    if pass:[(]from_mode == PrivilegeMode::VU || from_mode == PrivilegeMode::VS) {
+      if pass:[(]MXLEN == 32) {
+        CSR[<<udb:doc:csr:mstatush,mstatush>>].<<udb:doc:csr_field:mstatush:MPV,MPV>> = 1;
+      } else {
+        CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:MPV,MPV>> = 1;
+      }
+    } else {
+      if pass:[(]MXLEN == 32) {
+        CSR[<<udb:doc:csr:mstatush,mstatush>>].<<udb:doc:csr_field:mstatush:MPV,MPV>> = 0;
+      } else {
+        CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:MPV,MPV>> = 0;
+      }
+    }
+  }
+  CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:MPP,MPP>> = $bits(from_mode);
+} else if pass:[(]CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:S,S>> == 1 && (handling_mode == PrivilegeMode::S)) {
+  CSR[<<udb:doc:csr:sepc,sepc>>].<<udb:doc:csr_field:sepc:PC,PC>> = $pc;
+  if pass:[(]!<<udb:doc:func:stval_readonly?,stval_readonly?>>pass:[(])) {
+    CSR[<<udb:doc:csr:stval,stval>>].<<udb:doc:csr_field:stval:VALUE,VALUE>> = <<udb:doc:func:stval_for,stval_for>>pass:[(]exception_code, tval);
+  }
+  $pc = {CSR[<<udb:doc:csr:stvec,stvec>>].<<udb:doc:csr_field:stvec:BASE,BASE>>, 2'b00};
+  CSR[<<udb:doc:csr:scause,scause>>].<<udb:doc:csr_field:scause:INT,INT>> = 1'b0;
+  CSR[<<udb:doc:csr:scause,scause>>].<<udb:doc:csr_field:scause:CODE,CODE>> = $bits(exception_code);
+  CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:SPP,SPP>> = $bits(from_mode)[0];
+  if pass:[(]CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:H,H>> == 1) {
+    CSR[<<udb:doc:csr:htval,htval>>].<<udb:doc:csr_field:htval:VALUE,VALUE>> = 0;
+    CSR[<<udb:doc:csr:htinst,htinst>>].<<udb:doc:csr_field:htinst:VALUE,VALUE>> = 0;
+    CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:SPV,SPV>> = $bits(from_mode)[2];
+    if pass:[(]from_mode == PrivilegeMode::VU || from_mode == PrivilegeMode::VS) {
+      CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:SPV,SPV>> = 1;
+      if pass:[(]((exception_code == ExceptionCode::Breakpoint) && (REPORT_VA_IN_STVAL_ON_BREAKPOINT)) || ((exception_code == ExceptionCode::LoadAddressMisaligned) && (REPORT_VA_IN_STVAL_ON_LOAD_MISALIGNED)) || ((exception_code == ExceptionCode::StoreAmoAddressMisaligned) && (REPORT_VA_IN_STVAL_ON_STORE_AMO_MISALIGNED)) || ((exception_code == ExceptionCode::InstructionAddressMisaligned) && (REPORT_VA_IN_STVAL_ON_INSTRUCTION_MISALIGNED)) || ((exception_code == ExceptionCode::LoadAccessFault) && (REPORT_VA_IN_STVAL_ON_LOAD_ACCESS_FAULT)) || ((exception_code == ExceptionCode::StoreAmoAccessFault) && (REPORT_VA_IN_STVAL_ON_STORE_AMO_ACCESS_FAULT)) || ((exception_code == ExceptionCode::InstructionAccessFault) && (REPORT_VA_IN_STVAL_ON_INSTRUCTION_ACCESS_FAULT)) || ((exception_code == ExceptionCode::LoadPageFault) && (REPORT_VA_IN_STVAL_ON_LOAD_PAGE_FAULT)) || ((exception_code == ExceptionCode::StoreAmoPageFault) && (REPORT_VA_IN_STVAL_ON_STORE_AMO_PAGE_FAULT)) || ((exception_code == ExceptionCode::InstructionPageFault) && (REPORT_VA_IN_STVAL_ON_INSTRUCTION_PAGE_FAULT))) {
+        CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:GVA,GVA>> = 1;
+      } else {
+        CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:GVA,GVA>> = 0;
+      }
+      CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:SPVP,SPVP>> = $bits(from_mode)[0];
+    } else {
+      CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:SPV,SPV>> = 0;
+      CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:GVA,GVA>> = 0;
+    }
+  }
+} else if pass:[(]CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:H,H>> == 1 && (handling_mode == PrivilegeMode::VS)) {
+  CSR[<<udb:doc:csr:vsepc,vsepc>>].<<udb:doc:csr_field:vsepc:PC,PC>> = $pc;
+  if pass:[(]!<<udb:doc:func:vstval_readonly?,vstval_readonly?>>pass:[(])) {
+    CSR[<<udb:doc:csr:vstval,vstval>>].<<udb:doc:csr_field:vstval:VALUE,VALUE>> = <<udb:doc:func:vstval_for,vstval_for>>pass:[(]exception_code, tval);
+  }
+  $pc = {CSR[<<udb:doc:csr:vstvec,vstvec>>].<<udb:doc:csr_field:vstvec:BASE,BASE>>, 2'b00};
+  CSR[<<udb:doc:csr:vscause,vscause>>].<<udb:doc:csr_field:vscause:INT,INT>> = 1'b0;
+  CSR[<<udb:doc:csr:vscause,vscause>>].<<udb:doc:csr_field:vscause:CODE,CODE>> = $bits(exception_code);
+  CSR[<<udb:doc:csr:vsstatus,vsstatus>>].<<udb:doc:csr_field:vsstatus:SPP,SPP>> = $bits(from_mode)[0];
+}
+<<udb:doc:func:set_mode,set_mode>>pass:[(]handling_mode);
+<<udb:doc:func:abort_current_instruction,abort_current_instruction>>pass:[(]);
+----
+
+[#udb:doc:func:raise]
+=== `raise`
+Raise synchronous exception number `exception_code`.
+
+The exception may be imprecise, and will cause execution to enter an
+unpredictable state, if PRECISE_SYNCHRONOUS_EXCEPTIONS is false.
+
+Otherwise, the exception will be precise.
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| ExceptionCode exception_code, PrivilegeMode from_mode, XReg tval
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(]!PRECISE_SYNCHRONOUS_EXCEPTIONS) {
+  <<udb:doc:func:unpredictable,unpredictable>>pass:[(]"Imprecise synchronous exception");
+} else {
+  <<udb:doc:func:raise_precise,raise_precise>>pass:[(]exception_code, from_mode, tval);
+}
+----
+
+[#udb:doc:func:ame_xform_impl_to_rm]
+=== `ame_xform_impl_to_rm` (builtin)
+Given a square in implementation-defined format, return the row-major
+representation of the square.
+  
+
+|===
+h| Return Type l| Bits<AME_MAX_SQUARE_SIZE>
+h| Arguments   l| Bits<AME_MAX_SQUARE_SIZE> impl_square, Bits<8> dtype
+|===
+
+
+[#udb:doc:func:ame_op]
+=== `ame_op`
+Returns the result of src1 op src2 in dest_type.
+
+The bits above the destination datatype size are undefined, and should not be used.
+  
+
+|===
+h| Return Type l| Bits<AME_MAX_DTYPE_SIZE>
+h| Arguments   l| AmeOperation op, Bits<8> src1_dtype, Bits<AME_MAX_DTYPE_SIZE> src1_value, Bits<8> src2_dtype, Bits<AME_MAX_DTYPE_SIZE> src2_value, Bits<8> dest_dtype
+|===
+
+[subs="specialchars,macros"]
+----
+Bits<AME_MAX_DTYPE_SIZE> result;
+if pass:[(]op == AmeOperation::ADD1D) {
+  if pass:[(]((src1_dtype == INT4) || (src1_dtype == INT8) || (src1_dtype == INT16) || (src1_dtype == INT32) || (src1_dtype == INT64) || (src1_dtype == UINT4) || (src1_dtype == UINT8) || (src1_dtype == UINT16) || (src1_dtype == UINT32) || (src1_dtype == UINT64)) && ((src2_dtype == INT4) || (src2_dtype == INT8) || (src2_dtype == INT16) || (src2_dtype == INT32) || (src2_dtype == INT64) || (src2_dtype == UINT4) || (src2_dtype == UINT8) || (src2_dtype == UINT16) || (src2_dtype == UINT32) || (src2_dtype == UINT64))) {
+    result = src1_value pass:[+] src2_value;
+  } else {
+    result = 64'hxxxxxxxxxxxxxxxx;
+  }
+} else if pass:[(]op == AmeOperation::SUB1D) {
+  result = src2_value - src1_value;
+} else if pass:[(]op == AmeOperation::MEAN1D) {
+  result = (src1_value pass:[+] src2_value) >> 1;
+} else if pass:[(]op == AmeOperation::HDIFF1D) {
+  result = (src2_value - src1_value) >> 1;
+} else if pass:[(]op == AmeOperation::ABSDIFF1D) {
+  Bits<AME_MAX_DTYPE_SIZE> diff = src1_value - src2_value;
+  result = (src1_value >= src2_value) ? diff : (0 - diff);
+} else if pass:[(]op == AmeOperation::ABS1D) {
+  result = (src1_value[AME_MAX_DTYPE_SIZE - 1] == 0) ? src1_value : (0 - src1_value);
+} else if pass:[(]op == AmeOperation::MAX1D) {
+  result = (src1_value >= src2_value) ? src1_value : src2_value;
+} else if pass:[(]op == AmeOperation::MIN1D) {
+  result = (src1_value <= src2_value) ? src1_value : src2_value;
+}
+return result;
+----
+
+[#udb:doc:func:ame_xform_rm_to_impl]
+=== `ame_xform_rm_to_impl` (builtin)
+Given a square in row-major format, return the implementation-dependent
+representation of the square.
+  
+
+|===
+h| Return Type l| Bits<AME_MAX_SQUARE_SIZE>
+h| Arguments   l| Bits<AME_MAX_SQUARE_SIZE> raster_square, Bits<8> dtype
+|===
+
+
+[#udb:doc:func:sqrt]
+=== `sqrt`
+Integer square root of power of 4
+  
+
+|===
+h| Return Type l| Bits<64>
+h| Arguments   l| Bits<64> int_value
+|===
+
+[subs="specialchars,macros"]
+----
+for pass:[(]U32 i = 0; i < 64; i++) {
+  int_value = int_value / 4;
+  if pass:[(]int_value <= 1) {
+    return i pass:[+] 1;
+  }
+}
+----
+
+[#udb:doc:func:min]
+=== `min`
+Returns the smaller of a or b
+  
+
+|===
+h| Return Type l| Bits<64>
+h| Arguments   l| Bits<64> a, Bits<64> b
+|===
+
+[subs="specialchars,macros"]
+----
+return a < b ? a : b;
+----
+
+[#udb:doc:func:is_naturally_aligned]
+=== `is_naturally_aligned`
+Checks if value is naturally aligned to N bits.
+  
+
+|===
+h| Return Type l| Boolean
+h| Arguments   l| U32 N, XReg value
+|===
+
+[subs="specialchars,macros"]
+----
+return true if (N == 8);
+XReg Mask = (N / 8) - 1;
+return (value & ~Mask) == value;
+----
+
+[#udb:doc:func:assert]
+=== `assert` (builtin)
+Assert that a condition is true. Failure represents an error in the IDL model.
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| Boolean test, String message
+|===
+
+
+[#udb:doc:func:mpv]
+=== `mpv`
+Returns the current value of CSR[mstatus].MPV (when MXLEN == 64) of CSR[mstatush].MPV (when MXLEN == 32)
+  
+
+|===
+h| Return Type l| Bits<1>
+h| Arguments   l| 
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(]<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::H)) {
+  return (MXLEN == 32) ? CSR[<<udb:doc:csr:mstatush,mstatush>>].<<udb:doc:csr_field:mstatush:MPV,MPV>> : CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:MPV,MPV>>;
+} else {
+  <<udb:doc:func:assert,assert>>pass:[(]false, "TODO");
+}
+----
+
+[#udb:doc:func:effective_ldst_mode]
+=== `effective_ldst_mode`
+Returns the effective privilege mode for normal explicit loads and stores, taking into account
+the current actual privilege mode and modifications from `mstatus.MPRV`.
+  
+
+|===
+h| Return Type l| PrivilegeMode
+h| Arguments   l| 
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(]<<udb:doc:func:mode,mode>>pass:[(]) == PrivilegeMode::M) {
+  if pass:[(]CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:U,U>> == 1 && CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:MPRV,MPRV>> == 1) {
+    if pass:[(]CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:MPP,MPP>> == 0b00) {
+      if pass:[(]<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::H) && CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:H,H>> == 1 && <<udb:doc:func:mpv,mpv>>pass:[(]) == 0b1) {
+        return PrivilegeMode::VU;
+      } else {
+        return PrivilegeMode::U;
+      }
+    } else if pass:[(]CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:S,S>> == 1 && CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:MPP,MPP>> == 0b01) {
+      if pass:[(]<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::H) && CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:H,H>> == 1 && <<udb:doc:func:mpv,mpv>>pass:[(]) == 0b1) {
+        return PrivilegeMode::VS;
+      } else {
+        return PrivilegeMode::S;
+      }
+    }
+  }
+}
+return <<udb:doc:func:mode,mode>>pass:[(]);
+----
+
+[#udb:doc:func:cached_translation]
+=== `cached_translation` (generated)
+Possibly returns a cached translation result matching +vaddr+.
+
+CachedTranslationResult contains a Boolean 'valid' field. If valid,
+'result' is a usable translation. Otherwise, the cache lookup failed.
+  
+
+|===
+h| Return Type l| CachedTranslationResult
+h| Arguments   l| XReg vaddr, MemoryOperation op
+|===
+
+
+[#udb:doc:func:current_translation_mode]
+=== `current_translation_mode`
+Returns the current first-stage translation mode for an explicit load or store
+from +mode+ given the machine state (e.g., value of `satp` or `vsatp` csr).
+
+Returns SatpMode::Reserved if the setting found in `satp` or `vsatp` is invalid.
+  
+
+|===
+h| Return Type l| SatpMode
+h| Arguments   l| PrivilegeMode mode
+|===
+
+[subs="specialchars,macros"]
+----
+PrivilegeMode effective_mode = <<udb:doc:func:effective_ldst_mode,effective_ldst_mode>>pass:[(]);
+if pass:[(]effective_mode == PrivilegeMode::M) {
+  return SatpMode::Bare;
+}
+if pass:[(]CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:H,H>> == 1'b1) {
+  if pass:[(]effective_mode == PrivilegeMode::VS || effective_mode == PrivilegeMode::VU) {
+    Bits<4> mode_val = CSR[<<udb:doc:csr:vsatp,vsatp>>].<<udb:doc:csr_field:vsatp:MODE,MODE>>;
+    if pass:[(]mode_val == $bits(SatpMode::Bare)) {
+      return SatpMode::Bare;
+    } else if pass:[(]mode_val == $bits(SatpMode::Sv32)) {
+      if pass:[(]MXLEN == 64) {
+        if pass:[(](effective_mode == PrivilegeMode::VS) && (CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:VSXL,VSXL>> != $bits(XRegWidth::XLEN32))) {
+          return SatpMode::Reserved;
+        }
+        if pass:[(](effective_mode == PrivilegeMode::VU) && (CSR[<<udb:doc:csr:vsstatus,vsstatus>>].<<udb:doc:csr_field:vsstatus:UXL,UXL>> != $bits(XRegWidth::XLEN32))) {
+          return SatpMode::Reserved;
+        }
+      }
+      if pass:[(]!SV32_VSMODE_TRANSLATION) {
+        return SatpMode::Reserved;
+      }
+      return SatpMode::Sv32;
+    } else if pass:[(](MXLEN == 64) && (mode_val == $bits(SatpMode::Sv39))) {
+      if pass:[(]effective_mode == PrivilegeMode::VS && CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:VSXL,VSXL>> != $bits(XRegWidth::XLEN64)) {
+        return SatpMode::Reserved;
+      }
+      if pass:[(]effective_mode == PrivilegeMode::VU && CSR[<<udb:doc:csr:vsstatus,vsstatus>>].<<udb:doc:csr_field:vsstatus:UXL,UXL>> != $bits(XRegWidth::XLEN64)) {
+        return SatpMode::Reserved;
+      }
+      if pass:[(]!SV39_VSMODE_TRANSLATION) {
+        return SatpMode::Reserved;
+      }
+      return SatpMode::Sv39;
+    } else if pass:[(](MXLEN == 64) && (mode_val == $bits(SatpMode::Sv48))) {
+      if pass:[(]effective_mode == PrivilegeMode::VS && CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:VSXL,VSXL>> != $bits(XRegWidth::XLEN64)) {
+        return SatpMode::Reserved;
+      }
+      if pass:[(]effective_mode == PrivilegeMode::VU && CSR[<<udb:doc:csr:vsstatus,vsstatus>>].<<udb:doc:csr_field:vsstatus:UXL,UXL>> != $bits(XRegWidth::XLEN64)) {
+        return SatpMode::Reserved;
+      }
+      if pass:[(]!SV48_VSMODE_TRANSLATION) {
+        return SatpMode::Reserved;
+      }
+      return SatpMode::Sv48;
+    } else if pass:[(](MXLEN == 64) && (mode_val == $bits(SatpMode::Sv57))) {
+      if pass:[(]effective_mode == PrivilegeMode::VS && CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:VSXL,VSXL>> != $bits(XRegWidth::XLEN64)) {
+        return SatpMode::Reserved;
+      }
+      if pass:[(]effective_mode == PrivilegeMode::VU && CSR[<<udb:doc:csr:vsstatus,vsstatus>>].<<udb:doc:csr_field:vsstatus:UXL,UXL>> != $bits(XRegWidth::XLEN64)) {
+        return SatpMode::Reserved;
+      }
+      if pass:[(]!SV57_VSMODE_TRANSLATION) {
+        return SatpMode::Reserved;
+      }
+      return SatpMode::Sv57;
+    } else {
+      return SatpMode::Reserved;
+    }
+  } else {
+    return SatpMode::Reserved;
+  }
+} else if pass:[(]CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:S,S>> == 1'b1) {
+  <<udb:doc:func:assert,assert>>pass:[(]effective_mode == PrivilegeMode::S || effective_mode == PrivilegeMode::U, "unexpected priv mode");
+  Bits<4> mode_val = CSR[<<udb:doc:csr:satp,satp>>].<<udb:doc:csr_field:satp:MODE,MODE>>;
+  if pass:[(]mode_val == $bits(SatpMode::Bare)) {
+    return SatpMode::Bare;
+  } else if pass:[(]mode_val == $bits(SatpMode::Sv32)) {
+    if pass:[(]MXLEN == 64) {
+      if pass:[(]effective_mode == PrivilegeMode::S && CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:SXL,SXL>> != $bits(XRegWidth::XLEN32)) {
+        return SatpMode::Reserved;
+      }
+      if pass:[(]effective_mode == PrivilegeMode::U && CSR[<<udb:doc:csr:sstatus,sstatus>>].<<udb:doc:csr_field:sstatus:UXL,UXL>> != $bits(XRegWidth::XLEN32)) {
+        return SatpMode::Reserved;
+      }
+    }
+    if pass:[(]!<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::Sv32)) {
+      return SatpMode::Reserved;
+    }
+    return SatpMode::Sv32;
+  } else if pass:[(](MXLEN == 64) && (mode_val == $bits(SatpMode::Sv39))) {
+    if pass:[(]effective_mode == PrivilegeMode::S && CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:SXL,SXL>> != $bits(XRegWidth::XLEN64)) {
+      return SatpMode::Reserved;
+    }
+    if pass:[(]effective_mode == PrivilegeMode::U && CSR[<<udb:doc:csr:sstatus,sstatus>>].<<udb:doc:csr_field:sstatus:UXL,UXL>> != $bits(XRegWidth::XLEN64)) {
+      return SatpMode::Reserved;
+    }
+    if pass:[(]!<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::Sv39)) {
+      return SatpMode::Reserved;
+    }
+    return SatpMode::Sv39;
+  } else if pass:[(](MXLEN == 64) && (mode_val == $bits(SatpMode::Sv48))) {
+    if pass:[(]effective_mode == PrivilegeMode::S && CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:SXL,SXL>> != $bits(XRegWidth::XLEN64)) {
+      return SatpMode::Reserved;
+    }
+    if pass:[(]effective_mode == PrivilegeMode::U && CSR[<<udb:doc:csr:sstatus,sstatus>>].<<udb:doc:csr_field:sstatus:UXL,UXL>> != $bits(XRegWidth::XLEN64)) {
+      return SatpMode::Reserved;
+    }
+    if pass:[(]!<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::Sv48)) {
+      return SatpMode::Reserved;
+    }
+    return SatpMode::Sv48;
+  } else if pass:[(](MXLEN == 64) && (mode_val == $bits(SatpMode::Sv57))) {
+    if pass:[(]effective_mode == PrivilegeMode::S && CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:SXL,SXL>> != $bits(XRegWidth::XLEN64)) {
+      return SatpMode::Reserved;
+    }
+    if pass:[(]effective_mode == PrivilegeMode::U && CSR[<<udb:doc:csr:sstatus,sstatus>>].<<udb:doc:csr_field:sstatus:UXL,UXL>> != $bits(XRegWidth::XLEN64)) {
+      return SatpMode::Reserved;
+    }
+    if pass:[(]!<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::Sv57)) {
+      return SatpMode::Reserved;
+    }
+    return SatpMode::Sv57;
+  } else {
+    return SatpMode::Reserved;
+  }
+} else {
+  return SatpMode::Reserved;
+}
+----
+
+[#udb:doc:func:xlen]
+=== `xlen`
+Returns the effective XLEN for the current privilege mode.
+  
+
+|===
+h| Return Type l| Bits<8>
+h| Arguments   l| 
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(]MXLEN == 32) {
+  return 32;
+} else {
+  if pass:[(]<<udb:doc:func:mode,mode>>pass:[(]) == PrivilegeMode::M) {
+    if pass:[(]CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:MXL,MXL>> == $bits(XRegWidth::XLEN32)) {
+      return 32;
+    } else if pass:[(]CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:MXL,MXL>> == $bits(XRegWidth::XLEN64)) {
+      return 64;
+    } else {
+      <<udb:doc:func:unreachable,unreachable>>pass:[(]);
+    }
+  } else if pass:[(]<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::S) && <<udb:doc:func:mode,mode>>pass:[(]) == PrivilegeMode::S) {
+    if pass:[(]CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:SXL,SXL>> == $bits(XRegWidth::XLEN32)) {
+      return 32;
+    } else if pass:[(]CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:SXL,SXL>> == $bits(XRegWidth::XLEN64)) {
+      return 64;
+    } else {
+      <<udb:doc:func:unreachable,unreachable>>pass:[(]);
+    }
+  } else if pass:[(]<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::U) && <<udb:doc:func:mode,mode>>pass:[(]) == PrivilegeMode::U) {
+    if pass:[(]CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:UXL,UXL>> == $bits(XRegWidth::XLEN32)) {
+      return 32;
+    } else if pass:[(]CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:UXL,UXL>> == $bits(XRegWidth::XLEN64)) {
+      return 64;
+    } else {
+      <<udb:doc:func:unreachable,unreachable>>pass:[(]);
+    }
+  } else if pass:[(]<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::H) && <<udb:doc:func:mode,mode>>pass:[(]) == PrivilegeMode::VS) {
+    if pass:[(]CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:VSXL,VSXL>> == $bits(XRegWidth::XLEN32)) {
+      return 32;
+    } else if pass:[(]CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:VSXL,VSXL>> == $bits(XRegWidth::XLEN64)) {
+      return 64;
+    } else {
+      <<udb:doc:func:unreachable,unreachable>>pass:[(]);
+    }
+  } else if pass:[(]<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::H) && <<udb:doc:func:mode,mode>>pass:[(]) == PrivilegeMode::VU) {
+    if pass:[(]CSR[<<udb:doc:csr:vsstatus,vsstatus>>].<<udb:doc:csr_field:vsstatus:UXL,UXL>> == $bits(XRegWidth::XLEN32)) {
+      return 32;
+    } else if pass:[(]CSR[<<udb:doc:csr:vsstatus,vsstatus>>].<<udb:doc:csr_field:vsstatus:UXL,UXL>> == $bits(XRegWidth::XLEN64)) {
+      return 64;
+    } else {
+      <<udb:doc:func:unreachable,unreachable>>pass:[(]);
+    }
+  } else {
+    <<udb:doc:func:unreachable,unreachable>>pass:[(]);
+  }
+}
+----
+
+[#udb:doc:func:tinst_value_for_guest_page_fault]
+=== `tinst_value_for_guest_page_fault`
+Returns the value of htinst/mtinst for a Guest Page Fault
+  
+
+|===
+h| Return Type l| XReg
+h| Arguments   l| MemoryOperation op, Bits<INSTR_ENC_SIZE> encoding, Boolean for_final_vs_pte
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(]for_final_vs_pte) {
+  if pass:[(]op == MemoryOperation::Fetch) {
+    if pass:[(]TINST_VALUE_ON_FINAL_INSTRUCTION_GUEST_PAGE_FAULT == "always zero") {
+      return 0;
+    } else {
+      <<udb:doc:func:assert,assert>>pass:[(]TINST_VALUE_ON_FINAL_INSTRUCTION_GUEST_PAGE_FAULT == "always pseudoinstruction", "Instruction guest page faults can only report zero/pseudo instruction in tval");
+      return 0x00002000;
+    }
+  } else if pass:[(]op == MemoryOperation::Read) {
+    if pass:[(]TINST_VALUE_ON_FINAL_LOAD_GUEST_PAGE_FAULT == "always zero") {
+      return 0;
+    } else if pass:[(]TINST_VALUE_ON_FINAL_LOAD_GUEST_PAGE_FAULT == "always pseudoinstruction") {
+      if pass:[(]($array_size(VSXLEN) == 1 && VSXLEN[0] == 32) || ((MXLEN == 64) && (CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:VSXL,VSXL>> == $bits(XRegWidth::XLEN32)))) {
+        return 0x00002000;
+      } else {
+        return 0x00003000;
+      }
+    } else if pass:[(]TINST_VALUE_ON_FINAL_LOAD_GUEST_PAGE_FAULT == "always transformed standard instruction") {
+      return <<udb:doc:func:tinst_transform,tinst_transform>>pass:[(]encoding, 0);
+    } else {
+      <<udb:doc:func:unpredictable,unpredictable>>pass:[(]"Custom value written into htinst/mtinst");
+    }
+  } else if pass:[(]op == MemoryOperation::Write || op == MemoryOperation::ReadModifyWrite) {
+    if pass:[(]TINST_VALUE_ON_FINAL_STORE_AMO_GUEST_PAGE_FAULT == "always zero") {
+      return 0;
+    } else if pass:[(]TINST_VALUE_ON_FINAL_STORE_AMO_GUEST_PAGE_FAULT == "always pseudoinstruction") {
+      if pass:[(]($array_size(VSXLEN) == 1 && VSXLEN[0] == 32) || ((MXLEN == 64) && (CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:VSXL,VSXL>> == $bits(XRegWidth::XLEN32)))) {
+        return 0x00002020;
+      } else {
+        return 0x00003020;
+      }
+    } else if pass:[(]TINST_VALUE_ON_FINAL_STORE_AMO_GUEST_PAGE_FAULT == "always transformed standard instruction") {
+      return <<udb:doc:func:tinst_transform,tinst_transform>>pass:[(]encoding, 0);
+    } else {
+      <<udb:doc:func:unpredictable,unpredictable>>pass:[(]"Custom value written into htinst/mtinst");
+    }
+  }
+} else {
+  if pass:[(]REPORT_GPA_IN_TVAL_ON_INTERMEDIATE_GUEST_PAGE_FAULT) {
+    if pass:[(]($array_size(VSXLEN) == 1 && VSXLEN[0] == 32) || ((MXLEN == 64) && (CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:VSXL,VSXL>> == $bits(XRegWidth::XLEN32)))) {
+      return 0x00002000;
+    } else if pass:[(]($array_size(VSXLEN) == 1 && VSXLEN[0] == 64) || ((MXLEN == 64) && (CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:VSXL,VSXL>> == $bits(XRegWidth::XLEN64)))) {
+      return 0x00003000;
+    }
+  }
+}
+----
+
+[#udb:doc:func:raise_guest_page_fault]
+=== `raise_guest_page_fault`
+Raise a guest page fault exception.
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| MemoryOperation op, XReg gpa, XReg gva, XReg tinst_value, PrivilegeMode from_mode
+|===
+
+[subs="specialchars,macros"]
+----
+ExceptionCode code;
+Boolean write_gpa_in_tval;
+if pass:[(]op == MemoryOperation::Read) {
+  code = ExceptionCode::LoadGuestPageFault;
+  write_gpa_in_tval = REPORT_GPA_IN_TVAL_ON_LOAD_GUEST_PAGE_FAULT;
+} else if pass:[(]op == MemoryOperation::Write || op == MemoryOperation::ReadModifyWrite) {
+  code = ExceptionCode::StoreAmoGuestPageFault;
+  write_gpa_in_tval = REPORT_GPA_IN_TVAL_ON_STORE_AMO_GUEST_PAGE_FAULT;
+} else {
+  <<udb:doc:func:assert,assert>>pass:[(]op == MemoryOperation::Fetch, "unexpected memory operation");
+  code = ExceptionCode::InstructionGuestPageFault;
+  write_gpa_in_tval = REPORT_GPA_IN_TVAL_ON_INSTRUCTION_GUEST_PAGE_FAULT;
+}
+PrivilegeMode handling_mode = <<udb:doc:func:exception_handling_mode,exception_handling_mode>>pass:[(]code);
+if pass:[(]handling_mode == PrivilegeMode::S) {
+  CSR[<<udb:doc:csr:htval,htval>>].<<udb:doc:csr_field:htval:VALUE,VALUE>> = write_gpa_in_tval ? (gpa >> 2) : 0;
+  CSR[<<udb:doc:csr:htinst,htinst>>].<<udb:doc:csr_field:htinst:VALUE,VALUE>> = tinst_value;
+  CSR[<<udb:doc:csr:sepc,sepc>>].<<udb:doc:csr_field:sepc:PC,PC>> = $pc;
+  if pass:[(]!<<udb:doc:func:stval_readonly?,stval_readonly?>>pass:[(])) {
+    CSR[<<udb:doc:csr:stval,stval>>].<<udb:doc:csr_field:stval:VALUE,VALUE>> = <<udb:doc:func:stval_for,stval_for>>pass:[(]code, gva);
+  }
+  $pc = {CSR[<<udb:doc:csr:stvec,stvec>>].<<udb:doc:csr_field:stvec:BASE,BASE>>, 2'b00};
+  CSR[<<udb:doc:csr:scause,scause>>].<<udb:doc:csr_field:scause:INT,INT>> = 1'b0;
+  CSR[<<udb:doc:csr:scause,scause>>].<<udb:doc:csr_field:scause:CODE,CODE>> = $bits(code);
+  CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:GVA,GVA>> = 1;
+  CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:SPV,SPV>> = 1;
+  CSR[<<udb:doc:csr:hstatus,hstatus>>].<<udb:doc:csr_field:hstatus:SPVP,SPVP>> = $bits(from_mode)[0];
+  CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:SPP,SPP>> = $bits(from_mode)[0];
+} else {
+  <<udb:doc:func:assert,assert>>pass:[(]handling_mode == PrivilegeMode::M, "unexpected privilege mode");
+  CSR[<<udb:doc:csr:mtval2,mtval2>>].<<udb:doc:csr_field:mtval2:VALUE,VALUE>> = write_gpa_in_tval ? (gpa >> 2) : 0;
+  CSR[<<udb:doc:csr:mtinst,mtinst>>].<<udb:doc:csr_field:mtinst:VALUE,VALUE>> = tinst_value;
+  CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:MPP,MPP>> = $bits(from_mode)[1:0];
+  if pass:[(]MXLEN == 64) {
+    CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:MPV,MPV>> = 1;
+  } else {
+    CSR[<<udb:doc:csr:mstatush,mstatush>>].<<udb:doc:csr_field:mstatush:MPV,MPV>> = 1;
+  }
+}
+<<udb:doc:func:set_mode,set_mode>>pass:[(]handling_mode);
+<<udb:doc:func:abort_current_instruction,abort_current_instruction>>pass:[(]);
+----
+
+[#udb:doc:func:pma_applies?]
+=== `pma_applies?` (builtin)
+Checks if _attr_ is applied to the entire physical address region
+between [paddr, paddr + len) based on static PMA attributes.
+  
+
+|===
+h| Return Type l| Boolean
+h| Arguments   l| PmaAttribute          attr, Bits<PHYS_ADDR_WIDTH> paddr, U32                   len
+|===
+
+
+[#udb:doc:func:direct_csr_lookup]
+=== `direct_csr_lookup` (generated)
+Return CSR info for a CSR with direct address +csr_addr+.
+
+If no CSR exists, <return_value>.valid == false
+  
+
+|===
+h| Return Type l| Csr
+h| Arguments   l| Bits<12> csr_addr
+|===
+
+
+[#udb:doc:func:csr_hw_read]
+=== `csr_hw_read` (generated)
+Returns the raw value of csr
+  
+
+|===
+h| Return Type l| Bits<64>
+h| Arguments   l| Csr csr
+|===
+
+
+[#udb:doc:func:csr_sw_read]
+=== `csr_sw_read` (generated)
+Returns the result of CSR[csr].sw_read(); i.e., the software view of the register
+  
+
+|===
+h| Return Type l| Bits<64>
+h| Arguments   l| Csr csr
+|===
+
+
+[#udb:doc:func:pmp_match_64]
+=== `pmp_match_64`
+Given a physical address, see if any PMP entry matches.
+
+If there is a complete match, return the PmpCfg that guards the region.
+If there is no match or a partial match, report that result.
+  
+
+|===
+h| Return Type l| PmpMatchResult, PmpCfg
+h| Arguments   l| Bits<PHYS_ADDR_WIDTH> paddr, U32 access_size
+|===
+
+[subs="specialchars,macros"]
+----
+Bits<12> pmpcfg0_addr = 0x3a0;
+Bits<12> pmpaddr0_addr = 0x3b0;
+for pass:[(]U32 i = 0; i < NUM_PMP_ENTRIES; i++) {
+  Bits<12> pmpcfg_idx = pmpcfg0_addr pass:[+] (i / 8) * 2;
+  Bits<6> shamt = (i % 8) * 8;
+  Csr pmpcfg_csr = <<udb:doc:func:direct_csr_lookup,direct_csr_lookup>>pass:[(]pmpcfg_idx);
+  PmpCfg cfg = (<<udb:doc:func:csr_hw_read,csr_hw_read>>pass:[(]pmpcfg_csr) >> shamt)[7:0];
+  Bits<12> pmpaddr_idx = pmpaddr0_addr pass:[+] i;
+  Csr pmpaddr_csr = <<udb:doc:func:direct_csr_lookup,direct_csr_lookup>>pass:[(]pmpaddr_idx);
+  Bits<64> pmpaddr_csr_value = <<udb:doc:func:csr_sw_read,csr_sw_read>>pass:[(]pmpaddr_csr);
+  Bits<PHYS_ADDR_WIDTH> range_base = 0;
+  Bits<PHYS_ADDR_WIDTH> range_limit = 0;
+  if pass:[(]cfg.A == $bits(PmpCfg_A::TOR)) {
+    if pass:[(]i == 0) {
+      range_base = 0;
+    } else {
+      Csr tor_pmpaddr_csr = <<udb:doc:func:direct_csr_lookup,direct_csr_lookup>>pass:[(]pmpaddr_idx - 1);
+      range_base = (<<udb:doc:func:csr_sw_read,csr_sw_read>>pass:[(]tor_pmpaddr_csr))[PHYS_ADDR_WIDTH - 1:0];
+    }
+    range_limit = (pmpaddr_csr_value)[PHYS_ADDR_WIDTH - 1:0] - 1;
+  } else if pass:[(]cfg.A == $bits(PmpCfg_A::NAPOT)) {
+    Bits<PHYS_ADDR_WIDTH - 1> pmpaddr_value = pmpaddr_csr_value[PHYS_ADDR_WIDTH - 1:0];
+    Bits<PHYS_ADDR_WIDTH - 1> mask = pmpaddr_value ^ (pmpaddr_value pass:[+] 1);
+    range_base = (pmpaddr_value & ~mask);
+    range_limit = range_base pass:[+] mask;
+  } else if pass:[(]cfg.A == $bits(PmpCfg_A::NA4)) {
+    range_base = pmpaddr_csr_value[PHYS_ADDR_WIDTH - 1:0];
+    range_limit = range_base pass:[+] 3;
+  }
+  if pass:[(]((paddr >> 2) >= range_base) && (((paddr pass:[+] (access_size / 8) - 1) >> 2) <= range_limit)) {
+    return PmpMatchResult::FullMatch, cfg;
+  } else if pass:[(]!(((paddr pass:[+] (access_size / 8) - 1) < range_base) || (paddr >= range_limit))) {
+    return PmpMatchResult::PartialMatch, -;
+  }
+}
+return PmpMatchResult::NoMatch, -;
+----
+
+[#udb:doc:func:pmp_match_32]
+=== `pmp_match_32`
+Given a physical address, see if any PMP entry matches.
+
+If there is a complete match, return the PmpCfg that guards the region.
+If there is no match or a partial match, report that result.
+  
+
+|===
+h| Return Type l| PmpMatchResult, PmpCfg
+h| Arguments   l| Bits<PHYS_ADDR_WIDTH> paddr, U32 access_size
+|===
+
+[subs="specialchars,macros"]
+----
+Bits<12> pmpcfg0_addr = 0x3a0;
+Bits<12> pmpaddr0_addr = 0x3b0;
+for pass:[(]U32 i = 0; i < NUM_PMP_ENTRIES; i++) {
+  Bits<12> pmpcfg_idx = pmpcfg0_addr pass:[+] (i / 4);
+  Bits<6> shamt = (i % 4) * 8;
+  Csr pmpcfg_csr = <<udb:doc:func:direct_csr_lookup,direct_csr_lookup>>pass:[(]pmpcfg_idx);
+  PmpCfg cfg = (<<udb:doc:func:csr_hw_read,csr_hw_read>>pass:[(]pmpcfg_csr) >> shamt)[7:0];
+  Bits<12> pmpaddr_idx = pmpaddr0_addr pass:[+] i;
+  Csr pmpaddr_csr = <<udb:doc:func:direct_csr_lookup,direct_csr_lookup>>pass:[(]pmpaddr_idx);
+  Bits<32> pmpaddr_csr_value = <<udb:doc:func:csr_sw_read,csr_sw_read>>pass:[(]pmpaddr_csr);
+  Bits<PHYS_ADDR_WIDTH> range_base = 0;
+  Bits<PHYS_ADDR_WIDTH> range_limit = 0;
+  if pass:[(]cfg.A == $bits(PmpCfg_A::TOR)) {
+    if pass:[(]i == 0) {
+      range_base = 0;
+    } else {
+      Csr tor_pmpaddr_csr = <<udb:doc:func:direct_csr_lookup,direct_csr_lookup>>pass:[(]pmpaddr_idx - 1);
+      range_base = <<udb:doc:func:csr_sw_read,csr_sw_read>>pass:[(]tor_pmpaddr_csr)[PHYS_ADDR_WIDTH - 1:0];
+    }
+    range_limit = (pmpaddr_csr_value)[PHYS_ADDR_WIDTH - 1:0] - 1;
+  } else if pass:[(]cfg.A == $bits(PmpCfg_A::NAPOT)) {
+    Bits<PHYS_ADDR_WIDTH - 1> pmpaddr_value = pmpaddr_csr_value[PHYS_ADDR_WIDTH - 3:0];
+    Bits<PHYS_ADDR_WIDTH - 1> mask = pmpaddr_value ^ (pmpaddr_value pass:[+] 1);
+    range_base = pmpaddr_value & ~mask;
+    range_limit = range_base pass:[+] mask;
+  } else if pass:[(]cfg.A == $bits(PmpCfg_A::NA4)) {
+    range_base = pmpaddr_csr_value[PHYS_ADDR_WIDTH - 1:0];
+    range_limit = range_base pass:[+] 3;
+  }
+  if pass:[(]((paddr >> 2) >= range_base) && (((paddr pass:[+] (access_size / 8) - 1) >> 2) <= range_limit)) {
+    return PmpMatchResult::FullMatch, cfg;
+  } else if pass:[(]!(((paddr pass:[+] (access_size / 8) - 1) < range_base) || (paddr >= range_limit))) {
+    return PmpMatchResult::PartialMatch, -;
+  }
+}
+return PmpMatchResult::NoMatch, -;
+----
+
+[#udb:doc:func:pmp_match]
+=== `pmp_match`
+Given a physical address, see if any PMP entry matches.
+
+If there is a complete match, return the PmpCfg that guards the region.
+If there is no match or a partial match, report that result.
+  
+
+|===
+h| Return Type l| PmpMatchResult, PmpCfg
+h| Arguments   l| Bits<PHYS_ADDR_WIDTH> paddr, U32 access_size
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(]MXLEN == 64) {
+  return <<udb:doc:func:pmp_match_64,pmp_match_64>>pass:[(]paddr, access_size);
+} else {
+  return <<udb:doc:func:pmp_match_32,pmp_match_32>>pass:[(]paddr, access_size);
+}
+----
+
+[#udb:doc:func:pmp_check]
+=== `pmp_check`
+Given a physical address and operation type, return whether or not the access is allowed by PMP.
+  
+
+|===
+h| Return Type l| Boolean
+h| Arguments   l| Bits<PHYS_ADDR_WIDTH> paddr, U32 access_size, MemoryOperation type
+|===
+
+[subs="specialchars,macros"]
+----
+PrivilegeMode mode = <<udb:doc:func:effective_ldst_mode,effective_ldst_mode>>pass:[(]);
+PmpMatchResult match_result;
+PmpCfg cfg;
+(match_result, cfg = <<udb:doc:func:pmp_match,pmp_match>>pass:[(]paddr, access_size));
+if pass:[(]match_result == PmpMatchResult::FullMatch) {
+  if pass:[(]mode == PrivilegeMode::M && (cfg.L == 0)) {
+    return true;
+  }
+  if pass:[(]type == MemoryOperation::Write && (cfg.W == 0)) {
+    return false;
+  } else if pass:[(]type == MemoryOperation::Read && (cfg.R == 0)) {
+    return false;
+  } else if pass:[(]type == MemoryOperation::Fetch && (cfg.X == 0)) {
+    return false;
+  }
+} else if pass:[(]match_result == PmpMatchResult::NoMatch) {
+  if pass:[(]mode == PrivilegeMode::M) {
+    return true;
+  } else {
+    return false;
+  }
+} else {
+  <<udb:doc:func:assert,assert>>pass:[(]match_result == PmpMatchResult::PartialMatch, "PMP matching logic error");
+  return false;
+}
+return true;
+----
+
+[#udb:doc:func:access_check]
+=== `access_check`
+Checks if the physical address paddr is able to access memory, and raises
+the appropriate exception if not.
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| Bits<PHYS_ADDR_WIDTH> paddr, U32 access_size, XReg vaddr, MemoryOperation type, ExceptionCode fault_type, PrivilegeMode from_mode
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(]paddr > ((1 pass:[`]<< PHYS_ADDR_WIDTH) - access_size)) {
+  <<udb:doc:func:raise,raise>>pass:[(]fault_type, from_mode, vaddr);
+}
+if pass:[(]NUM_PMP_ENTRIES > 0) {
+  if pass:[(]!<<udb:doc:func:pmp_check,pmp_check>>pass:[(]paddr[PHYS_ADDR_WIDTH - 1:0], access_size, type)) {
+    <<udb:doc:func:raise,raise>>pass:[(]fault_type, from_mode, vaddr);
+  }
+}
+----
+
+[#udb:doc:func:read_physical_memory_32]
+=== `read_physical_memory_32` (builtin)
+Read four bytes from physical memory.
+  
+
+|===
+h| Return Type l| Bits<32>
+h| Arguments   l| XReg paddr
+|===
+
+
+[#udb:doc:func:read_physical_memory]
+=== `read_physical_memory`
+Read from physical memory.
+  
+
+|===
+h| Return Type l| XReg
+h| Arguments   l| U32 len, XReg paddr
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(]len == 8) {
+  return <<udb:doc:func:read_physical_memory_8,read_physical_memory_8>>pass:[(]paddr);
+} else if pass:[(]len == 16) {
+  return <<udb:doc:func:read_physical_memory_16,read_physical_memory_16>>pass:[(]paddr);
+} else if pass:[(]len == 32) {
+  return <<udb:doc:func:read_physical_memory_32,read_physical_memory_32>>pass:[(]paddr);
+} else if pass:[(]len == 64) {
+  return <<udb:doc:func:read_physical_memory_64,read_physical_memory_64>>pass:[(]paddr);
+} else {
+  <<udb:doc:func:assert,assert>>pass:[(]false, "Invalid len");
+}
+----
+
+[#udb:doc:func:atomic_check_then_write_32]
+=== `atomic_check_then_write_32` (builtin)
+Atomically:
+
+ * Reads 32-bits from paddr
+ * Compares the read value to compare_value
+ * Writes write_value to paddr **if** the comparison was bitwise-equal
+
+returns true if the write occurs, and false otherwise
+
+Preconditions:
+
+ * paddr will be aligned to 32-bits
+
+  
+
+|===
+h| Return Type l| Boolean
+h| Arguments   l| Bits<PHYS_ADDR_WIDTH> paddr, Bits<32>              compare_value, Bits<32>              write_value
+|===
+
+
+[#udb:doc:func:gstage_page_walk]
+=== `gstage_page_walk`
+Translate guest physical address to physical address through a page walk.
+
+May raise a Guest Page Fault if an error involving the page table structure occurs along the walk.
+
+Implicit reads of the page table are accessed check, and may raise Access Faults.
+Implicit writes (updates of A/D) are also accessed checked, and may raise Access Faults
+
+The translated address _is not_ accessed checked.
+
+Returns the translated physical address.
+  
+
+|===
+h| Return Type l| TranslationResult
+h| Arguments   l| U32 VA_SIZE, U32 PA_SIZE, U32 PTESIZE, U32 LEVELS, XReg gpaddr, XReg vaddr, MemoryOperation op, PrivilegeMode effective_mode, Boolean for_final_vs_pte, Bits<INSTR_ENC_SIZE> encoding
+|===
+
+[subs="specialchars,macros"]
+----
+Bits<PA_SIZE> ppn;
+TranslationResult result;
+U32 VPN_SIZE = (LEVELS == 2) ? 10 : 9;
+ExceptionCode access_fault_code = op == MemoryOperation::Read ? ExceptionCode::LoadAccessFault : (op == MemoryOperation::Fetch ? ExceptionCode::InstructionAccessFault : ExceptionCode::StoreAmoAccessFault);
+ExceptionCode page_fault_code = op == MemoryOperation::Read ? ExceptionCode::LoadGuestPageFault : (op == MemoryOperation::Fetch ? ExceptionCode::InstructionGuestPageFault : ExceptionCode::StoreAmoGuestPageFault);
+Boolean mxr = for_final_vs_pte && (CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:MXR,MXR>> == 1);
+Boolean pbmte = <<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::Svpbmt) && CSR[<<udb:doc:csr:menvcfg,menvcfg>>].<<udb:doc:csr_field:menvcfg:PBMTE,PBMTE>> == 1;
+Boolean adue = <<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::Svadu) && CSR[<<udb:doc:csr:menvcfg,menvcfg>>].<<udb:doc:csr_field:menvcfg:ADUE,ADUE>> == 1;
+Bits<32> tinst = <<udb:doc:func:tinst_value_for_guest_page_fault,tinst_value_for_guest_page_fault>>pass:[(]op, encoding, for_final_vs_pte);
+U32 max_gpa_width = LEVELS * VPN_SIZE pass:[+] 2 pass:[+] 12;
+if pass:[(]gpaddr >> max_gpa_width != 0) {
+  <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, tinst, effective_mode);
+}
+ppn = CSR[<<udb:doc:csr:hgatp,hgatp>>].<<udb:doc:csr_field:hgatp:PPN,PPN>>;
+for pass:[(]U32 i = (LEVELS - 1); i >= 0; i--) {
+  U32 this_vpn_size = (i == (LEVELS - 1)) ? VPN_SIZE pass:[+] 2 : VPN_SIZE;
+  U32 vpn = (gpaddr >> (12 pass:[+] VPN_SIZE * i)) & ((1 << this_vpn_size) - 1);
+  Bits<PA_SIZE> pte_paddr = (ppn << 12) pass:[+] (vpn * (PTESIZE / 8));
+  if pass:[(]!<<udb:doc:func:pma_applies?,pma_applies?>>pass:[(]PmaAttribute::HardwarePageTableRead, pte_paddr, PTESIZE)) {
+    <<udb:doc:func:raise,raise>>pass:[(]access_fault_code, PrivilegeMode::U, vaddr);
+  }
+  <<udb:doc:func:access_check,access_check>>pass:[(]pte_paddr, PTESIZE, vaddr, MemoryOperation::Read, access_fault_code, effective_mode);
+  XReg pte = <<udb:doc:func:read_physical_memory,read_physical_memory>>pass:[(]PTESIZE, pte_paddr);
+  PteFlags pte_flags = pte[9:0];
+  if pass:[(]<<udb:doc:func:xlen,xlen>>pass:[(]) == 64) {
+    if pass:[(](VA_SIZE != 32) && (pte[58:54] != 0)) {
+      <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, tinst, effective_mode);
+    }
+    if pass:[(]!<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::Svrsw60t59b)) {
+      if pass:[(](PTESIZE >= 64) && pte[60:59] != 0) {
+        <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, tinst, effective_mode);
+      }
+    }
+    if pass:[(]!<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::Svnapot)) {
+      if pass:[(](PTESIZE >= 64) && pte[63] != 0) {
+        <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, tinst, effective_mode);
+      }
+    }
+    if pass:[(](PTESIZE >= 64) && !pbmte && (pte[62:61] != 0)) {
+      <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, tinst, effective_mode);
+    }
+    if pass:[(](PTESIZE >= 64) && pbmte && (pte[62:61] == 3)) {
+      <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, tinst, effective_mode);
+    }
+  }
+  if pass:[(]pte_flags.V == 0) {
+    <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, tinst, effective_mode);
+  }
+  if pass:[(]pte_flags.R == 0 && pte_flags.W == 1) {
+    <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, tinst, effective_mode);
+  }
+  if pass:[(]pte_flags.R == 1 || pte_flags.X == 1) {
+    if pass:[(]pte_flags.U == 0) {
+      <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, tinst, effective_mode);
+    }
+    if pass:[(]((op == MemoryOperation::Write) || (op == MemoryOperation::ReadModifyWrite)) && (pte_flags.W == 0)) {
+      <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, tinst, effective_mode);
+    } else if pass:[(](op == MemoryOperation::Fetch) && (pte_flags.X == 0)) {
+      <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, tinst, effective_mode);
+    } else if pass:[(](op == MemoryOperation::Read) || (op == MemoryOperation::ReadModifyWrite)) {
+      if pass:[(]((!mxr) && (pte_flags.R == 0)) || ((mxr) && (pte_flags.X == 0 && pte_flags.R == 0))) {
+        <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, tinst, effective_mode);
+      }
+    }
+    if pass:[(](i > 0) && (pte[(i - 1) * VPN_SIZE:0] != 0)) {
+      <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, tinst, effective_mode);
+    }
+    if pass:[(](pte_flags.A == 0) || ((pte_flags.D == 0) && ((op == MemoryOperation::Write) || (op == MemoryOperation::ReadModifyWrite)))) {
+      if pass:[(]adue) {
+        if pass:[(]!<<udb:doc:func:pma_applies?,pma_applies?>>pass:[(]PmaAttribute::RsrvEventual, pte_paddr, PTESIZE)) {
+          <<udb:doc:func:raise,raise>>pass:[(]access_fault_code, PrivilegeMode::U, vaddr);
+        }
+        if pass:[(]!<<udb:doc:func:pma_applies?,pma_applies?>>pass:[(]PmaAttribute::HardwarePageTableWrite, pte_paddr, PTESIZE)) {
+          <<udb:doc:func:raise,raise>>pass:[(]access_fault_code, PrivilegeMode::U, vaddr);
+        }
+        <<udb:doc:func:access_check,access_check>>pass:[(]pte_paddr, PTESIZE, vaddr, MemoryOperation::Write, access_fault_code, effective_mode);
+        Boolean success;
+        Bits<PTESIZE> updated_pte;
+        if pass:[(]pte_flags.D == 0 && (op == MemoryOperation::Write || op == MemoryOperation::ReadModifyWrite)) {
+          updated_pte = pte | 0b11000000;
+        } else {
+          updated_pte = pte | 0b01000000;
+        }
+        if pass:[(]PTESIZE == 32) {
+          success = <<udb:doc:func:atomic_check_then_write_32,atomic_check_then_write_32>>pass:[(]pte_paddr, pte, updated_pte);
+        } else if pass:[(]PTESIZE == 64) {
+          success = <<udb:doc:func:atomic_check_then_write_64,atomic_check_then_write_64>>pass:[(]pte_paddr, pte, updated_pte);
+        } else {
+          <<udb:doc:func:assert,assert>>pass:[(]false, "Unexpected PTESIZE");
+        }
+        if pass:[(]!success) {
+          i = i pass:[+] 1;
+        } else {
+          result.paddr = pte_paddr;
+          if pass:[(](<<udb:doc:func:xlen,xlen>>pass:[(]) == 64) && (PTESIZE >= 64)) {
+            result.pbmt = $enum(Pbmt, pte[62:61]);
+          }
+          result.pte_flags = pte_flags;
+          return result;
+        }
+      } else {
+        <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, tinst, effective_mode);
+      }
+    }
+  } else {
+    if pass:[(]i == 0) {
+      <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, tinst, effective_mode);
+    }
+    if pass:[(]pte_flags.D == 1 || pte_flags.A == 1 || pte_flags.U == 1) {
+      <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, tinst, effective_mode);
+    }
+    if pass:[(]<<udb:doc:func:xlen,xlen>>pass:[(]) == 64) {
+      if pass:[(](VA_SIZE != 32) && (pte[62:61] != 0)) {
+        <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, tinst, effective_mode);
+      }
+      if pass:[(](VA_SIZE != 32) && pte[63] != 0) {
+        <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, tinst, effective_mode);
+      }
+    }
+    ppn = pte[PA_SIZE - 3:10] << 12;
+  }
+}
+----
+
+[#udb:doc:func:read_physical_memory_64]
+=== `read_physical_memory_64` (builtin)
+Read eight bytes from physical memory.
+  
+
+|===
+h| Return Type l| Bits<64>
+h| Arguments   l| XReg paddr
+|===
+
+
+[#udb:doc:func:atomic_check_then_write_64]
+=== `atomic_check_then_write_64` (builtin)
+Atomically:
+
+ * Reads 64-bits from paddr
+ * Compares the read value to compare_value
+ * Writes write_value to paddr **if** the comparison was bitwise-equal
+
+returns true if the write occurs, and false otherwise
+
+Preconditions:
+
+ * paddr will be aligned to 64-bits
+  
+
+|===
+h| Return Type l| Boolean
+h| Arguments   l| Bits<PHYS_ADDR_WIDTH> paddr, Bits<64>              compare_value, Bits<64>              write_value
+|===
+
+
+[#udb:doc:func:tinst_transform]
+=== `tinst_transform`
+Returns the standard transformation of an encoding for htinst/mtinst
+  
+
+|===
+h| Return Type l| Bits<INSTR_ENC_SIZE>
+h| Arguments   l| Bits<INSTR_ENC_SIZE> encoding, Bits<5> addr_offset
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(]encoding[1:0] == 0b11) {
+  if pass:[(]encoding[6:2] == 5'b00001) {
+    return {{12{1'b0}}, addr_offset, encoding[14:0]};
+  } else if pass:[(]encoding[6:2] == 5'b01000) {
+    return {{7{1'b0}}, encoding[24:20], addr_offset, encoding[14:12], {5{1'b0}}, encoding[6:0]};
+  } else if pass:[(]encoding[6:2] == 5'b01011) {
+    return {encoding[31:20], addr_offset, encoding[14:0]};
+  } else if pass:[(]encoding[6:2] == 5'b00011) {
+    return {encoding[31:20], addr_offset, encoding[14:0]};
+  } else {
+    <<udb:doc:func:assert,assert>>pass:[(]false, "Bad transform");
+  }
+} else {
+  <<udb:doc:func:assert,assert>>pass:[(]false, "TODO: compressed instruction");
+}
+----
+
+[#udb:doc:func:translate_gstage]
+=== `translate_gstage`
+Translates a guest physical address to a physical address.
+  
+
+|===
+h| Return Type l| TranslationResult
+h| Arguments   l| XReg gpaddr, XReg vaddr, MemoryOperation op, PrivilegeMode effective_mode, Bits<INSTR_ENC_SIZE> encoding
+|===
+
+[subs="specialchars,macros"]
+----
+TranslationResult result;
+if pass:[(]!<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::H) || effective_mode == PrivilegeMode::S || effective_mode == PrivilegeMode::U) {
+  result.paddr = gpaddr;
+  return result;
+}
+Boolean mxr = CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:MXR,MXR>> == 1;
+if pass:[(]GSTAGE_MODE_BARE && CSR[<<udb:doc:csr:hgatp,hgatp>>].<<udb:doc:csr_field:hgatp:MODE,MODE>> == $bits(HgatpMode::Bare)) {
+  result.paddr = gpaddr;
+  return result;
+} else if pass:[(]SV32X4_TRANSLATION && CSR[<<udb:doc:csr:hgatp,hgatp>>].<<udb:doc:csr_field:hgatp:MODE,MODE>> == $bits(HgatpMode::Sv32x4)) {
+  return <<udb:doc:func:gstage_page_walk,gstage_page_walk>>pass:[(]32, 34, 32, 2, gpaddr, vaddr, op, effective_mode, false, encoding);
+} else if pass:[(]SV39X4_TRANSLATION && CSR[<<udb:doc:csr:hgatp,hgatp>>].<<udb:doc:csr_field:hgatp:MODE,MODE>> == $bits(HgatpMode::Sv39x4)) {
+  return <<udb:doc:func:gstage_page_walk,gstage_page_walk>>pass:[(]39, 56, 64, 3, gpaddr, vaddr, op, effective_mode, false, encoding);
+} else if pass:[(]SV48X4_TRANSLATION && CSR[<<udb:doc:csr:hgatp,hgatp>>].<<udb:doc:csr_field:hgatp:MODE,MODE>> == $bits(HgatpMode::Sv48x4)) {
+  return <<udb:doc:func:gstage_page_walk,gstage_page_walk>>pass:[(]48, 56, 64, 4, gpaddr, vaddr, op, effective_mode, false, encoding);
+} else if pass:[(]SV57X4_TRANSLATION && CSR[<<udb:doc:csr:hgatp,hgatp>>].<<udb:doc:csr_field:hgatp:MODE,MODE>> == $bits(HgatpMode::Sv57x4)) {
+  return <<udb:doc:func:gstage_page_walk,gstage_page_walk>>pass:[(]57, 56, 64, 5, gpaddr, vaddr, op, effective_mode, false, encoding);
+} else {
+  if pass:[(]op == MemoryOperation::Read) {
+    <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, <<udb:doc:func:tinst_value_for_guest_page_fault,tinst_value_for_guest_page_fault>>pass:[(]op, encoding, true), effective_mode);
+  } else if pass:[(]op == MemoryOperation::Write || op == MemoryOperation::ReadModifyWrite) {
+    <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, <<udb:doc:func:tinst_value_for_guest_page_fault,tinst_value_for_guest_page_fault>>pass:[(]op, encoding, true), effective_mode);
+  } else {
+    <<udb:doc:func:assert,assert>>pass:[(]op == MemoryOperation::Fetch, "unexpected memory op");
+    <<udb:doc:func:raise_guest_page_fault,raise_guest_page_fault>>pass:[(]op, gpaddr, vaddr, <<udb:doc:func:tinst_value_for_guest_page_fault,tinst_value_for_guest_page_fault>>pass:[(]op, encoding, true), effective_mode);
+  }
+}
+----
+
+[#udb:doc:func:stage1_page_walk]
+=== `stage1_page_walk`
+Translate virtual address to physical address through a page walk.
+
+May raise a Page Fault if an error involving the page table structure occurs along the walk.
+
+Implicit reads of the page table are accessed check, and may raise Access Faults.
+Implicit writes (updates of A/D) are also accessed checked, and may raise Access Faults
+
+The translated address _is not_ accessed checked.
+
+Returns the translated guest physical address.
+  
+
+|===
+h| Return Type l| TranslationResult
+h| Arguments   l| U32 VA_SIZE, U32 PA_SIZE, U32 PTESIZE, U32 LEVELS, Bits<MXLEN> vaddr, MemoryOperation op, PrivilegeMode effective_mode, Bits<INSTR_ENC_SIZE> encoding
+|===
+
+[subs="specialchars,macros"]
+----
+Bits<PA_SIZE> ppn;
+TranslationResult result;
+U32 VPN_SIZE = (LEVELS == 2) ? 10 : 9;
+ExceptionCode access_fault_code = op == MemoryOperation::Read ? ExceptionCode::LoadAccessFault : (op == MemoryOperation::Fetch ? ExceptionCode::InstructionAccessFault : ExceptionCode::StoreAmoAccessFault);
+ExceptionCode page_fault_code = op == MemoryOperation::Read ? ExceptionCode::LoadPageFault : (op == MemoryOperation::Fetch ? ExceptionCode::InstructionPageFault : ExceptionCode::StoreAmoPageFault);
+Boolean sse = false;
+Boolean adue;
+if pass:[(]CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:H,H>> == 1 && (effective_mode == PrivilegeMode::VS || effective_mode == PrivilegeMode::VU)) {
+  adue = <<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::Svadu) && CSR[<<udb:doc:csr:henvcfg,henvcfg>>].<<udb:doc:csr_field:henvcfg:ADUE,ADUE>> == 1;
+} else {
+  adue = <<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::Svadu) && CSR[<<udb:doc:csr:menvcfg,menvcfg>>].<<udb:doc:csr_field:menvcfg:ADUE,ADUE>> == 1;
+}
+Boolean pbmte;
+if pass:[(](<<udb:doc:func:xlen,xlen>>pass:[(]) == 32) || VA_SIZE == 32) {
+  pbmte = false;
+} else {
+  if pass:[(]CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:H,H>> == 1 && (effective_mode == PrivilegeMode::VS || effective_mode == PrivilegeMode::VU)) {
+    pbmte = <<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::Svpbmt) && CSR[<<udb:doc:csr:henvcfg,henvcfg>>].<<udb:doc:csr_field:henvcfg:PBMTE,PBMTE>> == 1;
+  } else {
+    pbmte = <<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::Svpbmt) && CSR[<<udb:doc:csr:menvcfg,menvcfg>>].<<udb:doc:csr_field:menvcfg:PBMTE,PBMTE>> == 1;
+  }
+}
+Boolean mxr;
+if pass:[(]CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:H,H>> == 1 && (effective_mode == PrivilegeMode::VS || effective_mode == PrivilegeMode::VU)) {
+  mxr = (CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:MXR,MXR>> == 1) || (CSR[<<udb:doc:csr:vsstatus,vsstatus>>].<<udb:doc:csr_field:vsstatus:MXR,MXR>> == 1);
+  ppn = CSR[<<udb:doc:csr:vsatp,vsatp>>].<<udb:doc:csr_field:vsatp:PPN,PPN>>;
+} else {
+  mxr = CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:MXR,MXR>> == 1;
+  ppn = CSR[<<udb:doc:csr:satp,satp>>].<<udb:doc:csr_field:satp:PPN,PPN>>;
+}
+Boolean sum;
+if pass:[(]CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:H,H>> == 1 && (effective_mode == PrivilegeMode::VS)) {
+  sum = CSR[<<udb:doc:csr:vsstatus,vsstatus>>].<<udb:doc:csr_field:vsstatus:SUM,SUM>> == 1;
+} else {
+  sum = CSR[<<udb:doc:csr:mstatus,mstatus>>].<<udb:doc:csr_field:mstatus:SUM,SUM>> == 1;
+}
+if pass:[(](VA_SIZE < <<udb:doc:func:xlen,xlen>>pass:[(])) && (vaddr[<<udb:doc:func:xlen,xlen>>pass:[(]) - 1:VA_SIZE] != {<<udb:doc:func:xlen,xlen>>pass:[(]) - VA_SIZE{vaddr[VA_SIZE - 1]}})) {
+  <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+}
+for pass:[(]U32 I = (LEVELS - 1); I >= 0; I--) {
+  U32 vpn = (vaddr >> (12 pass:[+] VPN_SIZE * I)) & ((1 pass:[`]<< VPN_SIZE) - 1);
+  Bits<PA_SIZE> pte_gpaddr = (ppn << 12) pass:[+] (vpn * (PTESIZE / 8));
+  TranslationResult pte_phys = <<udb:doc:func:translate_gstage,translate_gstage>>pass:[(]pte_gpaddr, vaddr, MemoryOperation::Read, effective_mode, encoding);
+  if pass:[(]!<<udb:doc:func:pma_applies?,pma_applies?>>pass:[(]PmaAttribute::HardwarePageTableRead, pte_phys.paddr, PTESIZE)) {
+    <<udb:doc:func:raise,raise>>pass:[(]access_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+  }
+  <<udb:doc:func:access_check,access_check>>pass:[(]pte_phys.paddr, PTESIZE, vaddr, MemoryOperation::Read, access_fault_code, effective_mode);
+  XReg pte = <<udb:doc:func:read_physical_memory,read_physical_memory>>pass:[(]PTESIZE, pte_phys.paddr);
+  PteFlags pte_flags = pte[9:0];
+  Boolean ss_page = (pte_flags.R == 0) && (pte_flags.W == 1) && (pte_flags.X == 0);
+  if pass:[(](<<udb:doc:func:xlen,xlen>>pass:[(]) == 64) && (VA_SIZE != 32) && (pte[58:54] != 0)) {
+    <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+  }
+  if pass:[(]pte_flags.V == 0) {
+    <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+  }
+  if pass:[(]!sse) {
+    if pass:[(](pte_flags.R == 0) && (pte_flags.W == 1)) {
+      <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+    }
+  }
+  if pass:[(]<<udb:doc:func:xlen,xlen>>pass:[(]) == 64) {
+    if pass:[(]pbmte) {
+      if pass:[(]pte[62:61] == 3) {
+        <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+      }
+    } else {
+      if pass:[(](PTESIZE >= 64) && (pte[62:61] != 0)) {
+        <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+      }
+    }
+    if pass:[(]!<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::Svrsw60t59b)) {
+      if pass:[(](PTESIZE >= 64) && pte[60:59] != 0) {
+        <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+      }
+    }
+    if pass:[(]!<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::Svnapot)) {
+      if pass:[(](PTESIZE >= 64) && (pte[63] != 0)) {
+        <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+      }
+    }
+  }
+  if pass:[(]pte_flags.R == 1 || pte_flags.X == 1) {
+    Bits<PA_SIZE> paddr_base = pte[PA_SIZE - 3:I * VPN_SIZE pass:[+] 10] pass:[`]<< (I * VPN_SIZE pass:[+] 12);
+    Bits<PA_SIZE> offset = vaddr[I * VPN_SIZE pass:[+] 11:0];
+    if pass:[(]op == MemoryOperation::Read || op == MemoryOperation::ReadModifyWrite) {
+      if pass:[(]((!mxr) && (pte_flags.R == 0)) || ((mxr) && (pte_flags.X == 0 && pte_flags.R == 0))) {
+        <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+      }
+      if pass:[(]effective_mode == PrivilegeMode::U && pte_flags.U == 0) {
+        <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+      } else if pass:[(]CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:H,H>> == 1 && effective_mode == PrivilegeMode::VU && pte_flags.U == 0) {
+        <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+      } else if pass:[(]effective_mode == PrivilegeMode::S && pte_flags.U == 1 && !sum) {
+        <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+      } else if pass:[(]effective_mode == PrivilegeMode::VS && pte_flags.U == 1 && !sum) {
+        <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+      }
+    }
+    if pass:[(]((op == MemoryOperation::Write) || (op == MemoryOperation::ReadModifyWrite)) && (pte_flags.W == 0)) {
+      <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+    } else if pass:[(](op == MemoryOperation::Fetch) && (pte_flags.X == 0)) {
+      <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+    } else if pass:[(](op == MemoryOperation::Fetch) && ss_page) {
+      <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+    }
+    <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr) if (((I > 0) && (pte[I * VPN_SIZE pass:[+] 10:10] != 0)));
+    if pass:[(](pte_flags.A == 0) || ((pte_flags.D == 0) && ((op == MemoryOperation::Write) || (op == MemoryOperation::ReadModifyWrite)))) {
+      if pass:[(]adue) {
+        TranslationResult pte_phys = <<udb:doc:func:translate_gstage,translate_gstage>>pass:[(]pte_gpaddr, vaddr, MemoryOperation::Write, effective_mode, encoding);
+        if pass:[(]!<<udb:doc:func:pma_applies?,pma_applies?>>pass:[(]PmaAttribute::RsrvEventual, pte_phys.paddr, PTESIZE)) {
+          <<udb:doc:func:raise,raise>>pass:[(]access_fault_code, effective_mode, vaddr);
+        }
+        if pass:[(]!<<udb:doc:func:pma_applies?,pma_applies?>>pass:[(]PmaAttribute::HardwarePageTableWrite, pte_phys.paddr, PTESIZE)) {
+          <<udb:doc:func:raise,raise>>pass:[(]access_fault_code, effective_mode, vaddr);
+        }
+        <<udb:doc:func:access_check,access_check>>pass:[(]pte_phys.paddr, PTESIZE, vaddr, MemoryOperation::Write, access_fault_code, effective_mode);
+        Boolean success;
+        Bits<PTESIZE> updated_pte;
+        if pass:[(]pte_flags.D == 0 && (op == MemoryOperation::Write || op == MemoryOperation::ReadModifyWrite)) {
+          updated_pte = pte | 0b11000000;
+        } else {
+          updated_pte = pte | 0b01000000;
+        }
+        if pass:[(]PTESIZE == 32) {
+          success = <<udb:doc:func:atomic_check_then_write_32,atomic_check_then_write_32>>pass:[(]pte_phys.paddr, pte, updated_pte);
+        } else if pass:[(]PTESIZE == 64) {
+          success = <<udb:doc:func:atomic_check_then_write_64,atomic_check_then_write_64>>pass:[(]pte_phys.paddr, pte, updated_pte);
+        } else {
+          <<udb:doc:func:assert,assert>>pass:[(]false, "Unexpected PTESIZE");
+        }
+        if pass:[(]!success) {
+          I = I pass:[+] 1;
+        } else {
+          TranslationResult pte_phys = <<udb:doc:func:translate_gstage,translate_gstage>>pass:[(]paddr_base pass:[+] offset, vaddr, op, effective_mode, encoding);
+          result.paddr = pte_phys.paddr;
+          if pass:[(]<<udb:doc:func:xlen,xlen>>pass:[(]) == 64) {
+            result.pbmt = pte_phys.pbmt == Pbmt::PMA ? $enum(Pbmt, pte[62:61]) : pte_phys.pbmt;
+          }
+          result.pte_flags = pte_flags;
+          return result;
+        }
+      } else {
+        <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+      }
+    }
+    TranslationResult pte_phys = <<udb:doc:func:translate_gstage,translate_gstage>>pass:[(]paddr_base pass:[+] offset, vaddr, op, effective_mode, encoding);
+    result.paddr = pte_phys.paddr;
+    if pass:[(]<<udb:doc:func:xlen,xlen>>pass:[(]) == 64 && PTESIZE >= 64) {
+      result.pbmt = pte_phys.pbmt == Pbmt::PMA ? $enum(Pbmt, pte[62:61]) : pte_phys.pbmt;
+    }
+    result.pte_flags = pte_flags;
+    return result;
+  } else {
+    if pass:[(]I == 0) {
+      <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+    }
+    if pass:[(]pte_flags.D == 1 || pte_flags.A == 1 || pte_flags.U == 1) {
+      <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+    }
+    if pass:[(](<<udb:doc:func:xlen,xlen>>pass:[(]) == 64) && (VA_SIZE != 32) && (pte[62:61] != 0)) {
+      <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+    }
+    if pass:[(](<<udb:doc:func:xlen,xlen>>pass:[(]) == 64) && (VA_SIZE != 32) && pte[63] != 0) {
+      <<udb:doc:func:raise,raise>>pass:[(]page_fault_code, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+    }
+    ppn = pte[PA_SIZE - 3:10];
+  }
+}
+----
+
+[#udb:doc:func:maybe_cache_translation]
+=== `maybe_cache_translation` (generated)
+Given a translation result, potentially cache the result for later use. This function models
+a TLB fill operation. A valid implementation does nothing.
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| XReg vaddr, MemoryOperation op, TranslationResult result
+|===
+
+
+[#udb:doc:func:translate]
+=== `translate`
+Translate a virtual address for operation type +op+ that appears to execute at
++effective_mode+.
+
+The translation will depend on the effective privilege mode.
+
+May raise a Page Fault or Access Fault.
+
+The final physical address is *not* access checked (for PMP, PMA, etc., violations).
+(though intermediate page table reads will be)
+  
+
+|===
+h| Return Type l| TranslationResult
+h| Arguments   l| XReg vaddr, MemoryOperation op, PrivilegeMode effective_mode, Bits<INSTR_ENC_SIZE> encoding
+|===
+
+[subs="specialchars,macros"]
+----
+Boolean cached_translation_valid;
+CachedTranslationResult cached_translation_result;
+cached_translation_result = <<udb:doc:func:cached_translation,cached_translation>>pass:[(]vaddr, op);
+if pass:[(]cached_translation_result.valid) {
+  return cached_translation_result.result;
+}
+TranslationResult result;
+if pass:[(]effective_mode == PrivilegeMode::M) {
+  result.paddr = vaddr;
+  return result;
+}
+SatpMode translation_mode = <<udb:doc:func:current_translation_mode,current_translation_mode>>pass:[(]effective_mode);
+if pass:[(]translation_mode == SatpMode::Reserved) {
+  if pass:[(]op == MemoryOperation::Read) {
+    <<udb:doc:func:raise,raise>>pass:[(]ExceptionCode::LoadPageFault, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+  } else if pass:[(]op == MemoryOperation::Write || op == MemoryOperation::ReadModifyWrite) {
+    <<udb:doc:func:raise,raise>>pass:[(]ExceptionCode::StoreAmoPageFault, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+  } else {
+    <<udb:doc:func:assert,assert>>pass:[(]op == MemoryOperation::Fetch, "Unexpected memory operation");
+    <<udb:doc:func:raise,raise>>pass:[(]ExceptionCode::InstructionPageFault, <<udb:doc:func:mode,mode>>pass:[(]), vaddr);
+  }
+}
+if pass:[(]translation_mode == SatpMode::Bare) {
+  result.paddr = vaddr;
+} else if pass:[(]<<udb:doc:func:xlen,xlen>>pass:[(]) == 32 && translation_mode == SatpMode::Sv32) {
+  result = <<udb:doc:func:stage1_page_walk,stage1_page_walk>>pass:[(]32, 34, 32, 2, vaddr, op, effective_mode, encoding);
+} else if pass:[(]<<udb:doc:func:xlen,xlen>>pass:[(]) == 64 && translation_mode == SatpMode::Sv39) {
+  result = <<udb:doc:func:stage1_page_walk,stage1_page_walk>>pass:[(]39, 56, 64, 3, vaddr, op, effective_mode, encoding);
+} else if pass:[(]<<udb:doc:func:xlen,xlen>>pass:[(]) == 64 && translation_mode == SatpMode::Sv48) {
+  result = <<udb:doc:func:stage1_page_walk,stage1_page_walk>>pass:[(]48, 56, 64, 4, vaddr, op, effective_mode, encoding);
+} else if pass:[(]<<udb:doc:func:xlen,xlen>>pass:[(]) == 64 && translation_mode == SatpMode::Sv57) {
+  result = <<udb:doc:func:stage1_page_walk,stage1_page_walk>>pass:[(]57, 56, 64, 5, vaddr, op, effective_mode, encoding);
+} else {
+  <<udb:doc:func:assert,assert>>pass:[(]false, "Unexpected SatpMode");
+}
+<<udb:doc:func:maybe_cache_translation,maybe_cache_translation>>pass:[(]vaddr, op, result);
+return result;
+----
+
+[#udb:doc:func:read_memory_aligned]
+=== `read_memory_aligned`
+Read from virtual memory using a known aligned address.
+
+If +rl+ is 1, then the load also acts as a memory model release (applied after all
+checks pass but before the physical read).
+If +aq+ is 1, then the load also acts as a memory model acquire (applied after the read).
+  
+
+|===
+h| Return Type l| XReg
+h| Arguments   l| U32 LEN, XReg virtual_address, Bits<INSTR_ENC_SIZE> encoding, Bits<1> aq, Bits<1> rl
+|===
+
+[subs="specialchars,macros"]
+----
+TranslationResult result;
+if pass:[(]CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:S,S>> == 1) {
+  result = <<udb:doc:func:translate,translate>>pass:[(]virtual_address, MemoryOperation::Read, <<udb:doc:func:effective_ldst_mode,effective_ldst_mode>>pass:[(]), encoding);
+} else {
+  result.paddr = virtual_address;
+}
+<<udb:doc:func:access_check,access_check>>pass:[(]result.paddr, LEN, virtual_address, MemoryOperation::Read, ExceptionCode::LoadAccessFault, <<udb:doc:func:effective_ldst_mode,effective_ldst_mode>>pass:[(]));
+if pass:[(]rl == 1'b1) {
+  <<udb:doc:func:memory_model_release,memory_model_release>>pass:[(]);
+}
+XReg value = <<udb:doc:func:read_physical_memory,read_physical_memory>>pass:[(]LEN, result.paddr);
+if pass:[(]aq == 1'b1) {
+  <<udb:doc:func:memory_model_acquire,memory_model_acquire>>pass:[(]);
+}
+return value;
+----
+
+[#udb:doc:func:in_naturally_aligned_region?]
+=== `in_naturally_aligned_region?`
+Checks if a length-bit access starting at +address+ lies entirely within an N-bit naturally-aligned region.
+  
+
+|===
+h| Return Type l| Boolean
+h| Arguments   l| U32  N, XReg address, U32  length
+|===
+
+[subs="specialchars,macros"]
+----
+XReg Mask = (N / 8) - 1;
+return (address & ~Mask) == ((address pass:[+] length - 1) & ~Mask);
+----
+
+[#udb:doc:func:misaligned_is_atomic?]
+=== `misaligned_is_atomic?`
+Returns true if an access starting at +physical_address+ that is +N+ bits long is atomic.
+
+This function takes into account any Atomicity Granule PMAs, so *it should not be used
+for load-reserved/store-conditional*, since those PMAs do not apply to those accesses.
+  
+
+|===
+h| Return Type l| Boolean
+h| Arguments   l| U32 N, Bits<PHYS_ADDR_WIDTH> physical_address
+|===
+
+[subs="specialchars,macros"]
+----
+return false if (MISALIGNED_MAX_ATOMICITY_GRANULE_SIZE == 0);
+if pass:[(]<<udb:doc:func:pma_applies?,pma_applies?>>pass:[(]PmaAttribute::MAG16, physical_address, N) && <<udb:doc:func:in_naturally_aligned_region?,in_naturally_aligned_region?>>pass:[(]128, physical_address, N)) {
+  return true;
+} else if pass:[(]<<udb:doc:func:pma_applies?,pma_applies?>>pass:[(]PmaAttribute::MAG8, physical_address, N) && <<udb:doc:func:in_naturally_aligned_region?,in_naturally_aligned_region?>>pass:[(]64, physical_address, N)) {
+  return true;
+} else if pass:[(]<<udb:doc:func:pma_applies?,pma_applies?>>pass:[(]PmaAttribute::MAG4, physical_address, N) && <<udb:doc:func:in_naturally_aligned_region?,in_naturally_aligned_region?>>pass:[(]32, physical_address, N)) {
+  return true;
+} else if pass:[(]<<udb:doc:func:pma_applies?,pma_applies?>>pass:[(]PmaAttribute::MAG2, physical_address, N) && <<udb:doc:func:in_naturally_aligned_region?,in_naturally_aligned_region?>>pass:[(]16, physical_address, N)) {
+  return true;
+} else {
+  return false;
+}
+----
+
+[#udb:doc:func:read_physical_memory_8]
+=== `read_physical_memory_8` (builtin)
+Read a byte from physical memory.
+  
+
+|===
+h| Return Type l| Bits<8>
+h| Arguments   l| XReg paddr
+|===
+
+
+[#udb:doc:func:read_memory]
+=== `read_memory`
+Read from virtual memory.
+
+  
+
+|===
+h| Return Type l| XReg
+h| Arguments   l| U32 LEN, XReg virtual_address, Bits<INSTR_ENC_SIZE> encoding
+|===
+
+[subs="specialchars,macros"]
+----
+Boolean aligned = <<udb:doc:func:is_naturally_aligned,is_naturally_aligned>>pass:[(]LEN, virtual_address);
+XReg physical_address;
+if pass:[(]aligned) {
+  return <<udb:doc:func:read_memory_aligned,read_memory_aligned>>pass:[(]LEN, virtual_address, encoding, 1'b0, 1'b0);
+}
+if pass:[(]MISALIGNED_MAX_ATOMICITY_GRANULE_SIZE > 0) {
+  <<udb:doc:func:assert,assert>>pass:[(]MISALIGNED_LDST_EXCEPTION_PRIORITY == "low", "Invalid config: can't mix low-priority misaligned exceptions with large atomicity granule");
+  physical_address = (CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:S,S>> == 1) ? <<udb:doc:func:translate,translate>>pass:[(]virtual_address, MemoryOperation::Read, <<udb:doc:func:effective_ldst_mode,effective_ldst_mode>>pass:[(]), encoding).paddr : virtual_address;
+  if pass:[(]<<udb:doc:func:misaligned_is_atomic?,misaligned_is_atomic?>>pass:[(]LEN, physical_address)) {
+    <<udb:doc:func:access_check,access_check>>pass:[(]physical_address, LEN, virtual_address, MemoryOperation::Read, ExceptionCode::LoadAccessFault, <<udb:doc:func:effective_ldst_mode,effective_ldst_mode>>pass:[(]));
+    return <<udb:doc:func:read_physical_memory,read_physical_memory>>pass:[(]LEN, physical_address);
+  }
+}
+if pass:[(]!MISALIGNED_LDST) {
+  if pass:[(]MISALIGNED_LDST_EXCEPTION_PRIORITY == "low") {
+    physical_address = (CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:S,S>> == 1) ? <<udb:doc:func:translate,translate>>pass:[(]virtual_address, MemoryOperation::Read, <<udb:doc:func:effective_ldst_mode,effective_ldst_mode>>pass:[(]), encoding).paddr : virtual_address;
+    <<udb:doc:func:access_check,access_check>>pass:[(]physical_address, LEN, virtual_address, MemoryOperation::Read, ExceptionCode::LoadAccessFault, <<udb:doc:func:effective_ldst_mode,effective_ldst_mode>>pass:[(]));
+  }
+  <<udb:doc:func:raise,raise>>pass:[(]ExceptionCode::LoadAddressMisaligned, <<udb:doc:func:mode,mode>>pass:[(]), virtual_address);
+} else {
+  if pass:[(]MISALIGNED_SPLIT_STRATEGY == "sequential_bytes") {
+    XReg result = 0;
+    for pass:[(]U32 I = 0; I < (LEN / 8); I++) {
+      result = result | (<<udb:doc:func:read_memory_aligned,read_memory_aligned>>pass:[(]8, virtual_address pass:[+] I, encoding, 1'b0, 1'b0) pass:[`]<< (8 * I));
+    }
+    return result;
+  } else if pass:[(]MISALIGNED_SPLIT_STRATEGY == "custom") {
+    <<udb:doc:func:unpredictable,unpredictable>>pass:[(]"An implementation is free to break a misaligned access any way, leading to unpredictable behavior when any part of the misaligned access causes an exception");
+  }
+}
+----
+
+[#udb:doc:func:read_physical_memory_16]
+=== `read_physical_memory_16` (builtin)
+Read two bytes from physical memory.
+  
+
+|===
+h| Return Type l| Bits<16>
+h| Arguments   l| XReg paddr
+|===
+
+
+[#udb:doc:func:read_memory_ame]
+=== `read_memory_ame`
+Read dtype_size_btyes from memory
+  
+
+|===
+h| Return Type l| Bits<MXLEN>
+h| Arguments   l| XReg virtual_address, Bits<INSTR_ENC_SIZE> encoding, Bits<AME_MAX_DTYPE_SIZE> dtype_size_bytes
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(]dtype_size_bytes == 4) {
+  return <<udb:doc:func:read_memory,read_memory>>pass:[(]4, virtual_address, encoding);
+} else if pass:[(]dtype_size_bytes == 8) {
+  return <<udb:doc:func:read_memory,read_memory>>pass:[(]8, virtual_address, encoding);
+} else if pass:[(]dtype_size_bytes == 16) {
+  return <<udb:doc:func:read_memory,read_memory>>pass:[(]16, virtual_address, encoding);
+} else if pass:[(]dtype_size_bytes == 32) {
+  return <<udb:doc:func:read_memory,read_memory>>pass:[(]32, virtual_address, encoding);
+} else if pass:[(]dtype_size_bytes == 64) {
+  return <<udb:doc:func:read_memory,read_memory>>pass:[(]64, virtual_address, encoding);
+} else {
+  <<udb:doc:func:unreachable,unreachable>>pass:[(]"Unsupported dtype size");
+}
+----
+
+[#udb:doc:func:ame_xform_cm_to_impl]
+=== `ame_xform_cm_to_impl` (builtin)
+Given a square in column-major format, return the implementation-dependent
+representation of the square.
+  
+
+|===
+h| Return Type l| Bits<AME_MAX_SQUARE_SIZE>
+h| Arguments   l| Bits<AME_MAX_SQUARE_SIZE> cm_square, Bits<8> dtype
+|===
+
+
+[#udb:doc:func:ame_xform_impl_to_cm]
+=== `ame_xform_impl_to_cm` (builtin)
+Given a square in implementation-defined format, return the column-major
+representation of the square.
+  
+
+|===
+h| Return Type l| Bits<AME_MAX_SQUARE_SIZE>
+h| Arguments   l| Bits<AME_MAX_SQUARE_SIZE> impl_square, Bits<8> dtype
+|===
+
+
+[#udb:doc:func:write_physical_memory]
+=== `write_physical_memory`
+Write to physical memory.
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| U32 len, XReg paddr, XReg value
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(]len == 8) {
+  <<udb:doc:func:write_physical_memory_8,write_physical_memory_8>>pass:[(]paddr, value);
+} else if pass:[(]len == 16) {
+  <<udb:doc:func:write_physical_memory_16,write_physical_memory_16>>pass:[(]paddr, value);
+} else if pass:[(]len == 32) {
+  <<udb:doc:func:write_physical_memory_32,write_physical_memory_32>>pass:[(]paddr, value);
+} else if pass:[(]len == 64) {
+  <<udb:doc:func:write_physical_memory_64,write_physical_memory_64>>pass:[(]paddr, value);
+} else {
+  <<udb:doc:func:assert,assert>>pass:[(]false, "Invalid len");
+}
+----
+
+[#udb:doc:func:write_memory_aligned]
+=== `write_memory_aligned`
+Write to virtual memory using a known aligned address.
+
+If +rl+ is 1, then the store also acts as a memory model release (applied after all
+checks pass but before the physical write).
+If +aq+ is 1, then the store also acts as a memory model acquire.
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| U32 LEN, XReg virtual_address, XReg value, Bits<INSTR_ENC_SIZE> encoding, Bits<1> aq, Bits<1> rl
+|===
+
+[subs="specialchars,macros"]
+----
+XReg physical_address;
+physical_address = (CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:S,S>> == 1) ? <<udb:doc:func:translate,translate>>pass:[(]virtual_address, MemoryOperation::Write, <<udb:doc:func:effective_ldst_mode,effective_ldst_mode>>pass:[(]), encoding).paddr : virtual_address;
+<<udb:doc:func:access_check,access_check>>pass:[(]physical_address, LEN, virtual_address, MemoryOperation::Write, ExceptionCode::StoreAmoAccessFault, <<udb:doc:func:effective_ldst_mode,effective_ldst_mode>>pass:[(]));
+if pass:[(]rl == 1'b1) {
+  <<udb:doc:func:memory_model_release,memory_model_release>>pass:[(]);
+}
+<<udb:doc:func:write_physical_memory,write_physical_memory>>pass:[(]LEN, physical_address, value);
+if pass:[(]aq == 1'b1) {
+  <<udb:doc:func:memory_model_acquire,memory_model_acquire>>pass:[(]);
+}
+----
+
+[#udb:doc:func:write_physical_memory_8]
+=== `write_physical_memory_8` (builtin)
+Write a byte to physical memory.
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| XReg paddr, Bits<8> value
+|===
+
+
+[#udb:doc:func:write_memory]
+=== `write_memory`
+Write to virtual memory
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| U32 LEN, XReg virtual_address, XReg value, Bits<INSTR_ENC_SIZE> encoding
+|===
+
+[subs="specialchars,macros"]
+----
+Boolean aligned = <<udb:doc:func:is_naturally_aligned,is_naturally_aligned>>pass:[(]LEN, virtual_address);
+XReg physical_address;
+if pass:[(]aligned) {
+  <<udb:doc:func:write_memory_aligned,write_memory_aligned>>pass:[(]LEN, virtual_address, value, encoding, 1'b0, 1'b0);
+  return ;
+}
+if pass:[(]MISALIGNED_MAX_ATOMICITY_GRANULE_SIZE > 0) {
+  <<udb:doc:func:assert,assert>>pass:[(]MISALIGNED_LDST_EXCEPTION_PRIORITY == "low", "Invalid config: can't mix low-priority misaligned exceptions with large atomicity granule");
+  physical_address = (CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:S,S>> == 1) ? <<udb:doc:func:translate,translate>>pass:[(]virtual_address, MemoryOperation::Write, <<udb:doc:func:effective_ldst_mode,effective_ldst_mode>>pass:[(]), encoding).paddr : virtual_address;
+  if pass:[(]<<udb:doc:func:misaligned_is_atomic?,misaligned_is_atomic?>>pass:[(]LEN, physical_address)) {
+    <<udb:doc:func:access_check,access_check>>pass:[(]physical_address, LEN, virtual_address, MemoryOperation::Write, ExceptionCode::StoreAmoAccessFault, <<udb:doc:func:effective_ldst_mode,effective_ldst_mode>>pass:[(]));
+    <<udb:doc:func:write_physical_memory,write_physical_memory>>pass:[(]LEN, physical_address, value);
+    return ;
+  }
+}
+if pass:[(]!MISALIGNED_LDST) {
+  if pass:[(]MISALIGNED_LDST_EXCEPTION_PRIORITY == "low") {
+    physical_address = (CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:S,S>> == 1) ? <<udb:doc:func:translate,translate>>pass:[(]virtual_address, MemoryOperation::Write, <<udb:doc:func:effective_ldst_mode,effective_ldst_mode>>pass:[(]), encoding).paddr : virtual_address;
+    <<udb:doc:func:access_check,access_check>>pass:[(]physical_address, LEN, virtual_address, MemoryOperation::Write, ExceptionCode::StoreAmoAccessFault, <<udb:doc:func:effective_ldst_mode,effective_ldst_mode>>pass:[(]));
+  }
+  <<udb:doc:func:raise,raise>>pass:[(]ExceptionCode::StoreAmoAddressMisaligned, <<udb:doc:func:mode,mode>>pass:[(]), virtual_address);
+} else {
+  if pass:[(]MISALIGNED_SPLIT_STRATEGY == "sequential_bytes") {
+    for pass:[(]U32 I = 0; I < (LEN / 8); I++) {
+      <<udb:doc:func:write_memory_aligned,write_memory_aligned>>pass:[(]8, virtual_address pass:[+] I, (value >> (8 * I))[7:0], encoding, 1'b0, 1'b0);
+    }
+  } else if pass:[(]MISALIGNED_SPLIT_STRATEGY == "custom") {
+    <<udb:doc:func:unpredictable,unpredictable>>pass:[(]"An implementation is free to break a misaligned access any way, leading to unpredictable behavior when any part of the misaligned access causes an exception");
+  }
+}
+----
+
+[#udb:doc:func:write_physical_memory_16]
+=== `write_physical_memory_16` (builtin)
+Write two bytes to physical memory.
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| XReg paddr, Bits<16> value
+|===
+
+
+[#udb:doc:func:write_physical_memory_32]
+=== `write_physical_memory_32` (builtin)
+Write four bytes to physical memory.
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| XReg paddr, Bits<32> value
+|===
+
+
+[#udb:doc:func:write_physical_memory_64]
+=== `write_physical_memory_64` (builtin)
+Write eight bytes to physical memory.
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| XReg paddr, Bits<64> value
+|===
+
+
+[#udb:doc:func:write_memory_ame]
+=== `write_memory_ame`
+Write dtype_size_bytes of data to memory.
+  
+
+|===
+h| Return Type l| void
+h| Arguments   l| XReg virtual_address, Bits<INSTR_ENC_SIZE> encoding, Bits<AME_MAX_SQUARE_SIZE> data, Bits<AME_MAX_DTYPE_SIZE> dtype_size_bytes
+|===
+
+[subs="specialchars,macros"]
+----
+if pass:[(]dtype_size_bytes == 4) {
+  <<udb:doc:func:write_memory,write_memory>>pass:[(]4, virtual_address, encoding, data[31:0]);
+} else if pass:[(]dtype_size_bytes == 8) {
+  <<udb:doc:func:write_memory,write_memory>>pass:[(]8, virtual_address, encoding, data[63:0]);
+} else if pass:[(]dtype_size_bytes == 16) {
+  <<udb:doc:func:write_memory,write_memory>>pass:[(]16, virtual_address, encoding, data[127:0]);
+} else if pass:[(]dtype_size_bytes == 32) {
+  <<udb:doc:func:write_memory,write_memory>>pass:[(]32, virtual_address, encoding, data[255:0]);
+} else if pass:[(]dtype_size_bytes == 64) {
+  <<udb:doc:func:write_memory,write_memory>>pass:[(]64, virtual_address, encoding, data[511:0]);
+} else {
+  <<udb:doc:func:unreachable,unreachable>>pass:[(]"Unsupported dtype size");
+}
+----
+

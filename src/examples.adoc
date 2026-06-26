@@ -1,0 +1,649 @@
+[[examples]]
+== Examples
+:imagesdir: ../images
+
+=== Datatype setting
+
+// not really bash, but gives us # comment highlighting
+[source,bash]
+----
+
+.equ INT4_DATATYPE, 0x
+
+
+----
+
+<<<
+
+[[gemm_examples]]
+=== GEMM
+
+These examples implement the GEMM accumulation `C [M×P] += A [M×K] × B [K×P]`.
+AME partitions each matrix into N×N squares, where `N = sqrt(AME_NELEM)`.
+
+For a given compute datatype with element size `dtype_bits`,
+`group_size = dtype_bits / AME_UNIT_DATATYPE_SIZE` consecutive M registers hold one square.
+The A-square group starts at `m0`; the B-square group starts at `m{group_size}`.
+All examples are restricted to `M 0–15` and `Acc0`, so group_size is at most 8.
+
+Storage-only datatypes (element size < `AME_UNIT_DATATYPE_SIZE`) cannot be used
+directly in compute instructions — they require `mconv.ew` expansion first — and
+are not covered in these examples.
+
+The figure below illustrates the tiling for `M=K=P=4N`, showing a snapshot
+at `i_tile=1`, `k_tile=1`, `j_tile=2`.
+
+image::gemm-portable.svg[AME GEMM tiling diagram]
+
+Each example uses the same triple-loop structure: the i and j loops iterate over
+N×N squares of C; for each (i, j) pair the k loop loads A and B squares and
+accumulates with `mmulacc.2d`, then `mmov.a.m` moves the result to M registers and
+`mss`/`mss.rm` stores the C square.
+Boundary squares are not shown; all examples handle only interior squares.
+
+<<<
+
+[[unit_dtype_gemm]]
+==== Non-portable GEMM, unit datatype
+
+Summary::
+This is the most specialized GEMM example: all AME parameters and the datatype element
+size are fixed, so `group_size = 1` is known at compile time.
+The group-size dispatch and macro infrastructure from <<gemm_examples>> are not needed,
+and the loop body is written directly.
+
+Assumptions::
++
+* `<<udb:doc:param:AME_NELEM,AME_NELEM>> = 16384`
+* `<<udb:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>> = 8`
+* `dtype_bits = AME_UNIT_DATATYPE_SIZE` (group_size = 1; one M register per square)
+* Squares are already formatted in the implementation-defined layout
+
+
+Details::
+See <<gemm_examples>> for the shared algorithm, group-size model, and tiling diagram.
++
+With `dtype_bits = U = 8`, `group_size = 1`: `A` occupies `m0` and `B` occupies `m1`;
+no group-size dispatch is needed.
++
+With `elem_bytes = 1`, strides are pure element counts:
+`s4 = N²`, `s2 = K × N`, `s3 = P × N` — no element-byte multiplier needed.
++
+The loop is written once directly rather than instantiated from a macro.
+
+Algorithm::
++
+[source%unbreakable,c]
+----
+// C[M×P] += A[M×K] × B[K×P]
+// group_size = 1 (dtype_bits = U = 8); elem_bytes = 1
+
+int N            = 128;               // t0: sqrt(16384), hardcoded
+int square_bytes = N * N;             // s4: one square right
+int A_row_stride = K * N;             // s2: one i-square down
+int CB_row_stride = P * N;            // s3: one square down
+
+C_row_base = C;                       // s5
+A_row_base = A;                       // s6
+
+for (int i = 0; i < M; i += N) {     // s7
+    C_sq       = C_row_base;          // a6
+    B_col_base = B;                   // a7
+
+    for (int j = 0; j < P; j += N) { // t2
+        acc0 = 0;                     // mzero.2d
+        A_sq = A_row_base;            // t4
+        B_sq = B_col_base;            // t5
+
+        for (int k = 0; k < K; k += N) { // t6
+            m0 = load_square(A_sq);   // mls: A[i,k] square
+            m1 = load_square(B_sq);   // mls: B[k,j] square
+            acc0 += m0 * m1;          // mmulacc.2d
+
+            A_sq += square_bytes;     // advance one k-square right
+            B_sq += CB_row_stride;    // advance one k-square down
+        }
+
+        store_square(acc0, C_sq);     // mmov.a.m + mss: store result square
+        C_sq       += square_bytes;   // advance one j-square right
+        B_col_base += square_bytes;   // advance one j-square right
+    }
+    C_row_base += CB_row_stride;      // advance one i-square down
+    A_row_base += A_row_stride;       // advance one i-square down
+}
+----
+
+Code::
++
+// not really bash, but it gets us colored # comments
+[source,bash]
+----
+# GEMM (square format, unit dtype): C[M×P] += A[M×K] * B[K×P]
+# AME_NELEM=16384 → N=128; AME_UNIT_DATATYPE_SIZE=8; dtype_bits=8; all hardcoded.
+# group_size=1: A→m0, B→m1.  elem_bytes=1: strides are pure element counts.
+#
+# Arguments:   a0=*C  a1=M  a2=*A  a3=K  a4=*B  a5=P  a6=dtype
+# Callee-saved: s2–s4 strides, s5–s7 loop-invariant ptrs/counter
+# Scratch:      t0=N=128
+#               t2=j  t4=A-square ptr  t5=B-square ptr
+#               t6=k  ra=k-bound scratch
+#               a6 reused as C-square ptr after dtype setup
+#               a7 used as B-col-base ptr in j loop
+
+gemm_unit_dtype:
+
+    # ── step 1: N, group_size, and elem_bytes all hardcoded ────────
+    li     t0, 128                # t0 = N = sqrt(16384)
+    # group_size = 1 (dtype_bits = U = 8); elem_bytes = 1
+
+    # ── step 2: configure datatypes ─────────────────────────────────
+    # group_size = 1: A→m0, B→m1
+    msettyp m0, a6
+    msettyp m1, a6
+    msettyp acc0, a6
+
+    # ── step 3: compute loop-invariant square strides ────────────────
+    # elem_bytes = 1, so strides are pure element counts
+    mul    s4, t0, t0             # s4 = sq_bytes  (= N²)
+    mul    s2, a3, t0             # s2 = K × N (A: one i-square down)
+    mul    s3, a5, t0             # s3 = P × N (C/B: one square down)
+
+    # ── step 4: initialize outer-loop state ──────────────────────────
+    mv     s5, a0                 # s5 = C row-base ptr
+    mv     s6, a2                 # s6 = A row-base ptr
+    li     s7, 0                  # i  = 0 (rows consumed)
+
+.i_loop:
+    sub    t1, a1, s7
+    blez   t1, .done
+
+    mv     a6, s5                 # a6 = C square ptr
+    mv     a7, a4                 # a7 = B col-base ptr
+    li     t2, 0                  # j  = 0
+
+.j_loop:
+    sub    t3, a5, t2
+    blez   t3, .j_done
+
+    mzero.2d  acc0
+
+    mv     t4, s6                 # t4 = A square ptr
+    mv     t5, a7                 # t5 = B square ptr
+    li     t6, 0                  # k  = 0
+
+.k_loop:
+    sub    ra, a3, t6
+    blez   ra, .k_done
+
+    mls     m0, t4                 # load A[i,k] square
+    mls     m1, t5                 # load B[k,j] square
+    mmulacc.2d  acc0, m0, m1        # acc0 += A_square × B_square
+
+    add    t4, t4, s4             # A ptr: advance one k-square right
+    add    t5, t5, s3             # B ptr: advance one k-square down
+    add    t6, t6, t0             # k += N
+    j      .k_loop
+
+.k_done:
+    mmov.a.m m0, acc0
+    mss     m0, a6                 # store result square to C
+
+    add    a6, a6, s4             # C ptr: advance one j-square right
+    add    a7, a7, s4             # B col-base: advance one j-square right
+    add    t2, t2, t0             # j += N
+    j      .j_loop
+
+.j_done:
+    add    s5, s5, s3             # C row-base: advance one i-square down
+    add    s6, s6, s2             # A row-base: advance one i-square down
+    add    s7, s7, t0             # i += N
+    j      .i_loop
+
+.done:
+    ret
+----
+
+<<<
+
+[[square_gemm]]
+==== Non-portable GEMM, any datatype
+
+Summary::
+This example is a GEMM kernel that operates on squares that are already formatted in the
+implementation-defined square layout and where all AME parameters are known.
+It represents a kernel written for a specific implementation.
+
+Assumptions::
++
+* `<<udb:doc:param:AME_NELEM,AME_NELEM>> = 16384`
+* `<<udb:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>> = 8`
+* Squares are already formatted in the implementation-defined layout
+
+Details::
+See <<gemm_examples>> for the shared algorithm, group-size model, and tiling diagram.
++
+`N = 128` and `U = 8` are hardcoded from the known implementation parameters —
+no CSR reads are needed.
+Matrices are pre-formatted in the implementation-defined square layout, so `mls` and
+`mss` are used directly (no row-major conversion).
++
+Memory strides use `square_bytes = AME_NELEM × elem_bytes = 16384 × elem_bytes`.
++
+`dtype` varies at runtime: `group_size = dtype_bits >> 3` (since `U = 8`).
+Storage-only datatypes (`dtype_bits < 8`) are rejected at entry.
+The triple loop is instantiated once per supported group_size via a macro.
+
+Algorithm::
++
+[source%unbreakable,c]
+----
+// C[M×P] += A[M×K] × B[K×P]
+// Square format, any datatype; N = 128 and U = 8 are hardcoded
+
+int N          = 128;                    // t0: sqrt(16384)
+int dtype_bits = dtype & 0xFF;           // t2: element size in bits
+int elem_bytes = dtype_bits / 8;         // t3
+
+if (dtype_bits < 8) return;              // guard: reject storage-only datatypes
+
+int group_size    = dtype_bits / 8;      // t2: repurposed (U = 8 hardcoded)
+// A-sq group: m0…m[group_size-1]
+// B-sq group: m[group_size]…m[2*group_size-1]
+
+int square_bytes  = N * N * elem_bytes;  // s4: one square right
+int A_row_stride  = K * N * elem_bytes;  // s2: one i-square down
+int CB_row_stride = P * N * elem_bytes;  // s3: one square down
+
+C_row_base = C;                          // s5
+A_row_base = A;                          // s6
+
+for (int i = 0; i < M; i += N) {        // s7
+    C_sq       = C_row_base;             // a6
+    B_col_base = B;                      // a7
+
+    for (int j = 0; j < P; j += N) {    // t2 (reused)
+        acc0 = 0;                        // mzero.2d
+        A_sq = A_row_base;               // t4
+        B_sq = B_col_base;               // t5
+
+        for (int k = 0; k < K; k += N) { // t6
+            m0            = load_square(A_sq);  // mls: A[i,k] square
+            m[group_size] = load_square(B_sq);  // mls: B[k,j] square
+            acc0 += m0 * m[group_size];         // mmulacc.2d
+
+            A_sq += square_bytes;        // advance one k-square right
+            B_sq += CB_row_stride;       // advance one k-square down
+        }
+
+        store_square(acc0, C_sq);        // mmov.a.m + mss: store result square
+        C_sq       += square_bytes;      // advance one j-square right
+        B_col_base += square_bytes;      // advance one j-square right
+    }
+    C_row_base += CB_row_stride;         // advance one i-square down
+    A_row_base += A_row_stride;          // advance one i-square down
+}
+----
+
+Code::
++
+// not really bash, but it gets us colored # comments
+[source,bash]
+----
+# GEMM (square format): C[M×P] += A[M×K] * B[K×P]
+# Matrices A, B, C pre-formatted in implementation-defined square layout.
+# AME_NELEM=16384  →  N=128; AME_UNIT_DATATYPE_SIZE=8 bits; both hardcoded.
+#
+# Arguments:   a0=*C  a1=M  a2=*A  a3=K  a4=*B  a5=P  a6=dtype
+# Callee-saved: s2–s4 strides, s5–s7 loop-invariant ptrs/counter
+# Scratch:      t0=N=128  t3=elem_bytes
+#               t2=dtype_bits→group_size→j  t4=A-sq ptr  t5=B-sq ptr
+#               t6=k  ra=k-bound scratch
+#               a6 reused as C-square ptr after dtype setup
+#               a7 used as B-col-base ptr in j loop
+
+gemm_square:
+
+    # ── step 1: N and U are known for this implementation ──────────
+    li     t0, 128                # t0 = N = sqrt(16384)
+    # U = AME_UNIT_DATATYPE_SIZE = 8 bits (hardcoded below)
+
+    # ── step 2: extract element byte size from dtype encoding ───────
+    # dtype bits [7:0] = element size in bits
+    andi   t2, a6, 0xFF           # t2 = dtype_bits
+    srli   t3, t2, 3              # t3 = elem_bytes = dtype_bits / 8
+
+    # ── step 3: guard — reject storage-only datatypes ──────────────
+    li     t1, 8
+    bltu   t2, t1, .done          # dtype_bits < 8 → unsupported
+
+    # ── step 4: compute group_size ──────────────────────────────────
+    # group_size = dtype_bits / U = dtype_bits / 8 (U = 8 is hardcoded)
+    srli   t2, t2, 3              # t2 = group_size
+
+    # ── step 5: configure datatypes ─────────────────────────────────
+    msettyp m0, a6                # A-square group starts at m0
+    msettyp acc0, a6
+
+    # ── step 6: compute loop-invariant square strides ──────────────────
+    # square_bytes = N² × elem_bytes = AME_NELEM × elem_bytes
+    mul    t1, t0, t3             # t1 = N × elem_bytes
+    mul    s4, t0, t1             # s4 = sq_bytes  (N²×eb)
+    mul    s2, a3, t1             # s2 = K×N×eb  (A: i-sq ↓)
+    mul    s3, a5, t1             # s3 = P×N×eb  (C/B: sq ↓)
+
+    # ── step 7: initialize outer-loop state ──────────────────────────
+    mv     s5, a0                 # s5 = C row-base ptr
+    mv     s6, a2                 # s6 = A row-base ptr
+    li     s7, 0                  # i  = 0 (rows consumed)
+
+    # ── step 8: dispatch on group_size, configure B-square group ───────
+    # A-square group always starts at m0; B-square group starts at m{group_size}.
+    li     t1, 1
+    beq    t2, t1, .setup_gs1
+    li     t1, 2
+    beq    t2, t1, .setup_gs2
+    li     t1, 4
+    beq    t2, t1, .setup_gs4
+    li     t1, 8
+    beq    t2, t1, .setup_gs8
+    j      .done                  # unsupported group_size
+
+.setup_gs1:
+    msettyp m1, a6
+    j      .i_loop1
+.setup_gs2:
+    msettyp m2, a6
+    j      .i_loop2
+.setup_gs4:
+    msettyp m4, a6
+    j      .i_loop4
+.setup_gs8:
+    msettyp m8, a6
+    j      .i_loop8
+
+# ── triple loop, instantiated per group_size via macro ──────────
+# The loop body is identical for all group_sizes; only \breg varies.
+
+.macro GEMM_LOOPS suffix, breg
+.i_loop\suffix:
+    sub    t1, a1, s7
+    blez   t1, .done
+
+    mv     a6, s5                 # a6 = C square ptr
+    mv     a7, a4                 # a7 = B col-base ptr
+    li     t2, 0                  # j  = 0
+
+.j_loop\suffix:
+    sub    t3, a5, t2
+    blez   t3, .j_done\suffix
+
+    mzero.2d  acc0
+
+    mv     t4, s6                 # t4 = A square ptr
+    mv     t5, a7                 # t5 = B square ptr
+    li     t6, 0                  # k  = 0
+
+.k_loop\suffix:
+    sub    ra, a3, t6
+    blez   ra, .k_done\suffix
+
+    mls     m0, t4                 # load A[i,k] square
+    mls     \breg, t5              # load B[k,j] square
+    mmulacc.2d  acc0, m0, \breg    # acc0 += A_square × B_square
+
+    add    t4, t4, s4             # A ptr: advance one k-square right
+    add    t5, t5, s3             # B ptr: advance one k-square down
+    add    t6, t6, t0             # k += N
+    j      .k_loop\suffix
+
+.k_done\suffix:
+    mmov.a.m m0, acc0
+    mss     m0, a6                 # store result square to C
+
+    add    a6, a6, s4             # C ptr: advance one j-square right
+    add    a7, a7, s4             # B col-base: advance one j-square right
+    add    t2, t2, t0             # j += N
+    j      .j_loop\suffix
+
+.j_done\suffix:
+    add    s5, s5, s3             # C row-base: advance one i-square down
+    add    s6, s6, s2             # A row-base: advance one i-square down
+    add    s7, s7, t0             # i += N
+    j      .i_loop\suffix
+.endm
+
+GEMM_LOOPS 1, m1   # group_size = 1: A→m0,     B→m1
+GEMM_LOOPS 2, m2   # group_size = 2: A→m0–m1,  B→m2–m3
+GEMM_LOOPS 4, m4   # group_size = 4: A→m0–m3,  B→m4–m7
+GEMM_LOOPS 8, m8   # group_size = 8: A→m0–m7,  B→m8–m15
+
+.done:
+    ret
+----
+
+<<<
+
+[[portable_gemm]]
+==== Portable GEMM
+
+Summary::
+This example is a generic GEMM kernel that is portable across AME implementations regardless of
+<<udb:doc:param:AME_NELEM,AME_NELEM>>, <<udb:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>>,
+<<udb:doc:param:AME_NUM_M_REGS,AME_NUM_M_REGS>>, or <<udb:doc:param:AME_NUM_ACC_REGS,AME_NUM_ACC_REGS>>.
+It shows the versatility of AME but is *not* how tuned AME would likely work; tuned code would
+likely expect square formatting to occur first, so would look more like <<square_gemm>>.
+
+Assumptions::
++
+* Squares are in row-major format
+
+Details::
+See <<gemm_examples>> for the shared algorithm, group-size model, and tiling diagram.
++
+Because <<udb:doc:param:AME_NELEM,AME_NELEM>> and
+<<udb:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>> are implementation-defined
+parameters, `N` and `U` are read from CSRs at runtime:
+`csrr t0, amenlen` gives `N = sqrt(AME_NELEM)` and `csrr t1, ameudsz` gives `U`.
++
+Matrices are in row-major layout, so `mls.rm` and `mss.rm` convert to/from the
+implementation-defined square format on every load/store.
+Row-major addressing requires per-row strides (`K × elem_bytes` for A,
+`P × elem_bytes` for B/C) that are not needed when squares are pre-formatted.
++
+`group_size = dtype_bits / U` is computed at runtime via `divu` (both are powers of 2)
+and dispatched to one of four loop instances (group_size 1, 2, 4, 8).
+
+Algorithm::
++
+[source%unbreakable,c]
+----
+// C[M×P] += A[M×K] × B[K×P]
+// Portable: N and U read from CSRs; matrices in row-major layout
+
+int N          = read_csr(amenlen);    // t0: sqrt(AME_NELEM)
+int U          = read_csr(ameudsz);    // t1: AME_UNIT_DATATYPE_SIZE in bits
+int dtype_bits = dtype & 0xFF;         // t2: element size in bits
+int elem_bytes = dtype_bits / 8;       // t3
+
+if (dtype_bits < U) return;            // guard: reject storage-only datatypes
+
+int group_size    = dtype_bits / U;    // t2: repurposed
+// A-tile group: m0…m[group_size-1]
+// B-tile group: m[group_size]…m[2*group_size-1]
+
+int A_row_stride  = K * elem_bytes;          // s0: A row byte stride
+int BC_row_stride = P * elem_bytes;          // s1: B/C row byte stride
+int A_tile_down   = N * A_row_stride;        // s2: one i-tile down
+int CB_tile_down  = N * BC_row_stride;       // s3: one tile down
+int tile_right    = N * elem_bytes;          // s4: one tile right
+
+C_row_base = C;                              // s5
+A_row_base = A;                              // s6
+
+for (int i = 0; i < M; i += N) {            // s7
+    C_tile     = C_row_base;                 // a6
+    B_col_base = B;                          // a7
+
+    for (int j = 0; j < P; j += N) {        // t2 (reused)
+        acc0 = 0;                            // mzero.2d
+        A_tile = A_row_base;                 // t4
+        B_tile = B_col_base;                 // t5
+
+        for (int k = 0; k < K; k += N) {    // t6
+            m0            = load_rm_tile(A_tile);  // mls.rm: A[i,k] tile
+            m[group_size] = load_rm_tile(B_tile);  // mls.rm: B[k,j] tile
+            acc0 += m0 * m[group_size];            // mmulacc.2d
+
+            A_tile += tile_right;           // advance one k-tile right
+            B_tile += CB_tile_down;         // advance one k-tile down
+        }
+
+        store_rm_tile(acc0, C_tile);         // mmov.a.m + mss.rm: store result tile
+        C_tile     += tile_right;            // advance one j-tile right
+        B_col_base += tile_right;            // advance one j-tile right
+    }
+    C_row_base += CB_tile_down;              // advance one i-tile down
+    A_row_base += A_tile_down;               // advance one i-tile down
+}
+----
+
+Code::
++
+// not really bash, but it gets us colored # comments
+[source,bash]
+----
+# Portable GEMM: C[M×P] += A[M×K] * B[K×P]
+# Any compute datatype, row-major layout
+#
+# Arguments:   a0=*C  a1=M  a2=*A  a3=K  a4=*B  a5=P  a6=dtype
+# Callee-saved: s0–s4 strides, s5–s7 loop-invariant ptrs/counter
+# Scratch:      t0=N  t1=U→dispatch scratch→remaining rows
+#               t2=dtype_bits→group_size→j  t3=elem_bytes→scratch
+#               t4=A-tile ptr  t5=B-tile ptr  t6=k  ra=k-bound scratch
+#               a6 reused as C-tile ptr after dtype setup
+#               a7 used as B-col-base ptr in j loop
+
+gemm_portable:
+
+    # ── step 1: discover N and unit datatype size ──────────────
+    csrr   t0, amenlen           # t0 = N = sqrt(AME_NELEM)
+    csrr   t1, ameudsz           # t1 = U = AME_UNIT_DATATYPE_SIZE (bits)
+
+    # ── step 2: extract element byte size from dtype encoding ──
+    # dtype bits [7:0] = element size in bits
+    andi   t2, a6, 0xFF          # t2 = dtype_bits
+    srli   t3, t2, 3             # t3 = elem_bytes = dtype_bits / 8
+
+    # ── step 3: guard — reject storage-only datatypes ──────────
+    # Storage-only types (dtype_bits < U) cannot be operands in compute
+    # instructions; they require mconv.ew expansion before use.
+    bltu   t2, t1, .done         # dtype_bits < U → unsupported
+
+    # ── step 4: compute group_size ─────────────────────────────
+    # group_size = dtype_bits / U  (both are powers of 2)
+    # group_size == 1 → one M register per tile  (dtype_bits == U)
+    # group_size == 2 → two M registers per tile (dtype_bits == 2U)
+    # etc.
+    divu   t2, t2, t1            # t2 = group_size  (t1 = U now free)
+
+    # ── step 5: configure datatypes ────────────────────────────
+    msettyp m0, a6               # A-tile group starts at m0
+    msettyp acc0, a6
+
+    # ── step 6: compute loop-invariant strides ──────────────────
+    mul    s0, a3, t3            # s0 = K×elem_bytes   (A row byte stride)
+    mul    s1, a5, t3            # s1 = P×elem_bytes   (B/C row byte stride)
+    mul    s2, t0, s0            # s2 = N×K×elem_bytes (A: one i_tile down)
+    mul    s3, t0, s1            # s3 = N×P×elem_bytes (C/B: one tile down)
+    mul    s4, t0, t3            # s4 = N×elem_bytes   (one tile right)
+
+    # ── step 7: initialize outer-loop state ─────────────────────
+    mv     s5, a0                # s5 = C row-base ptr
+    mv     s6, a2                # s6 = A row-base ptr
+    li     s7, 0                 # i  = 0 (rows consumed)
+
+    # ── step 8: dispatch on group_size, configure B-tile group ──
+    # A-tile group always starts at m0; B-tile group starts at m{group_size}.
+    # Each case sets the B-group datatype then jumps to the loop body.
+    li     t1, 1
+    beq    t2, t1, .setup_gs1
+    li     t1, 2
+    beq    t2, t1, .setup_gs2
+    li     t1, 4
+    beq    t2, t1, .setup_gs4
+    li     t1, 8
+    beq    t2, t1, .setup_gs8
+    j      .done                 # unsupported group_size
+
+.setup_gs1:
+    msettyp m1, a6
+    j      .i_loop1
+.setup_gs2:
+    msettyp m2, a6
+    j      .i_loop2
+.setup_gs4:
+    msettyp m4, a6
+    j      .i_loop4
+.setup_gs8:
+    msettyp m8, a6
+    j      .i_loop8
+
+# ── triple loop, instantiated per group_size via macro ─────────
+# The loop body is identical for all group_sizes; only \breg varies.
+
+.macro GEMM_LOOPS suffix, breg
+.i_loop\suffix:
+    sub    t1, a1, s7
+    blez   t1, .done
+
+    mv     a6, s5                # a6 = C tile ptr
+    mv     a7, a4                # a7 = B col-base ptr
+    li     t2, 0                 # j  = 0
+
+.j_loop\suffix:
+    sub    t3, a5, t2
+    blez   t3, .j_done\suffix
+
+    mzero.2d  acc0
+
+    mv     t4, s6                # t4 = A tile ptr
+    mv     t5, a7                # t5 = B tile ptr
+    li     t6, 0                 # k  = 0
+
+.k_loop\suffix:
+    sub    ra, a3, t6
+    blez   ra, .k_done\suffix
+
+    mls.rm  m0, t4                # load A[i,k] tile
+    mls.rm  \breg, t5             # load B[k,j] tile
+    mmulacc.2d  acc0, m0, \breg   # acc0 += A_tile × B_tile
+
+    add    t4, t4, s4            # A ptr: advance one k-tile right
+    add    t5, t5, s3            # B ptr: advance one k-tile down
+    add    t6, t6, t0            # k += N
+    j      .k_loop\suffix
+
+.k_done\suffix:
+    mmov.a.m m0, acc0
+    mss.rm  m0, a6                # store result tile to C
+
+    add    a6, a6, s4            # C ptr: advance one j-tile right
+    add    a7, a7, s4            # B col-base: advance one j-tile right
+    add    t2, t2, t0            # j += N
+    j      .j_loop\suffix
+
+.j_done\suffix:
+    add    s5, s5, s3            # C row-base: advance one i-tile down
+    add    s6, s6, s2            # A row-base: advance one i-tile down
+    add    s7, s7, t0            # i += N
+    j      .i_loop\suffix
+.endm
+
+GEMM_LOOPS 1, m1   # group_size = 1: A→m0,     B→m1
+GEMM_LOOPS 2, m2   # group_size = 2: A→m0–m1,  B→m2–m3
+GEMM_LOOPS 4, m4   # group_size = 4: A→m0–m3,  B→m4–m7
+GEMM_LOOPS 8, m8   # group_size = 8: A→m0–m7,  B→m8–m15
+
+.done:
+    ret
+----

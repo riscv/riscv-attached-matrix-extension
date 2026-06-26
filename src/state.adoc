@@ -1,0 +1,190 @@
+[[state]]
+== AME State
+:imagesdir: ../images
+
+To each hart, AME adds
+
+* <<udb:doc:param:AME_NUM_M_REGS,AME_NUM_M_REGS>> general-purpose matrix registers (`M`)
+* <<udb:doc:param:AME_NUM_M_REGS,AME_NUM_M_REGS>> datatype registers for the general-purpose registers (`Md`)
+* <<udb:doc:param:AME_NUM_ACC_REGS,AME_NUM_ACC_REGS>> accumulator register(s) (`Acc`)
+* <<udb:doc:param:AME_NUM_ACC_REGS,AME_NUM_ACC_REGS>> datatype registers for the accumulation register(s) (`Ad`)
+
+.AME register state
+image::zvame_regfiles.svg[Register state]
+
+[NOTE]
+--
+Both <<udb:doc:param:AME_NUM_M_REGS,AME_NUM_M_REGS>> and <<udb:doc:param:AME_NUM_ACC_REGS,AME_NUM_ACC_REGS>>
+are parameters that affect binary compatibility.
+
+Code written for `AME_NUM_M_REGS = 32` will not run on an implementation that chooses `AME_NUM_M_REGS = 16`.
+
+Code written for `AME_NUM_ACC_REGS = R` will not run on an implementation that chooses `AME_NUM_ACC_REGS` less than `R`.
+
+Conversely, code written for smaller values of
+<<udb:doc:param:AME_NUM_M_REGS,AME_NUM_M_REGS>>/<<udb:doc:param:AME_NUM_ACC_REGS,AME_NUM_ACC_REGS>>
+will run on an implementation that chooses a larger value.
+--
+
+=== Registers
+
+==== Matrix registers (`M0-M15` or `M0-M31`)
+
+.Matrix register state summary
+[cols="1,3"]
+|===
+h| Number of registers a| <<udb:doc:param:AME_NUM_M_REGS,AME_NUM_M_REGS>>
+h| Width of a register a| <<udb:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>> * <<udb:doc:param:AME_NELEM,AME_NELEM>>
+|===
+
+AME adds an implementation-defined number of general‑purpose registers.
+The number is determined by <<udb:doc:param:AME_NUM_M_REGS,AME_NUM_M_REGS>> and may be either 16 or 32.
+Code referencing `M16`–`M31` (that is, assuming <<udb:doc:param:AME_NUM_M_REGS,AME_NUM_M_REGS>> is 32)
+is not compatible with an implementation that chooses <<udb:doc:param:AME_NUM_M_REGS,AME_NUM_M_REGS>> of 16.
+
+The width of `M` register is implementation-defined, and is equal to
+<<udb:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>> * <<udb:doc:param:AME_NELEM,AME_NELEM>>.
+The layout of data in an `M` register is also implementation-defined;
+the only portable way to access data in an `M` register is through interoperability load/store
+instructions that convert to a standard layout (
+  <<udb:doc:inst:mls_rm,mls.rm>>,
+  <<udb:doc:inst:mls_cm,mls.cm>>,
+  <<udb:doc:inst:mss_rm,mss.rm>>,
+  and/or <<udb:doc:inst:mss_cm,mss.cm>>
+).
+
+==== Matrix datatype registers (`Md0-Md15` or `Md0-Md31`)
+
+AME adds an implementation-defined number of 32-bit `Md` registers used to identify
+the datatype of square elements.
+The number of `Md` registers equals <<udb:doc:param:AME_NUM_M_REGS,AME_NUM_M_REGS>> (16 or 32), matching the number of `M` registers.
+
+`Md` registers can only be read or written with the <<udb:doc:inst:mgettyp,mgettyp>> and
+<<udb:doc:inst:msettyp,msettyp>> instructions.
+
+Each `Md` register specifies the element datatype for the `M` register with the same index.
+
+The value of an `Md` is sticky, even if it is otherwise unused due to register grouping.
+For example, if registers 0 and 1 are grouped, a value written (via <<udb:doc:inst:msettyp,msettyp>>)
+into `Md[1]` will be retained even though it has no effect on the group.
+
+The encoding format of `Md` datatypes is specified in <<datatypes>>.
+
+==== Accumulator registers (`Acc0`. `Acc0-Acc1`, or `Acc0-Acc3`)
+
+AME adds an implementation-defined number of matrix accumulator registers.
+The number is determined by <<udb:doc:param:AME_NUM_ACC_REGS,AME_NUM_ACC_REGS>> and may be either 1, 2, or 4.
+Software written for <<udb:doc:param:AME_NUM_ACC_REGS,AME_NUM_ACC_REGS>> greater than an implementation
+implements will not run on that implementation.
+
+The behavior of encodings corresponding to unimplemented `Acc` registers is implementation-defined,
+and is determined by the <<udb:doc:param:AME_UNIMPL_ACC_BEHAVIOR,AME_UNIMPL_ACC_BEHAVIOR>>.
+
+An `Acc` register must be large enough to hold the largest representable square for an implementation given the supported datatypes.
+Note, this is unlike the `M` registers, which may be grouped to hold a single square.
+
+`Acc` registers are the destination of all AME matrix multiply instructions.
+`Acc` registers can also be source or destination of AME move instructions.
+
+==== Accumulator datatype registers (`Ad0`. `Ad0-Ad1`, or `Ad0-Ad3`)
+
+AME adds an implementation-defined number of 32-bit accumulator datatype registers.
+The number is determined by <<udb:doc:param:AME_NUM_ACC_REGS,AME_NUM_ACC_REGS>> and may be either 1, 2, or 4 (same as the `Acc` registers).
+
+`Ad` registers can only be read or written with the <<udb:doc:inst:agettyp,agettyp>> and <<udb:doc:inst:asettyp,asettyp>> instructions.
+
+Each `Ad` register specifies the element datatype for the `Acc` register with the same index.
+
+The encoding format of `Ad` datatypes is identical to the format for `Md`, and is specified in <<datatypes>>.
+
+=== Control and status registers (CSRs)
+
+AME adds three CSRs.
+
+|===
+| CSR | Address | Description
+
+| <<udb:doc:csr:amenlen,amenlen>>
+| `C01`
+| AME tile side length
+
+| <<udb:doc:csr:ameudsz,ameudsz>>
+| `C02`
+| AME unit datatype size in bits
+
+| <<udb:doc:csr:amestatus,amestatus>>
+| `C00`
+| Status of the AME extension
+
+|===
+
+==== amenlen
+
+Holds the value N = sqrt(AME_NELEM), the side length of an AME tile in elements.
+
+The value is a design-time constant equal to the square root of
+`AME_NELEM`.
+Because `AME_NELEM` is always a power of 4, N is always a power of 2.
+
+Software reads this CSR once at function entry to obtain N, then uses
+N to derive all tile loop bounds and memory strides without hardcoding any
+implementation-specific constants.
+This is analogous to reading `vlenb` in RISC-V Vector code.
+
+
+|===
+| Field | Location | Description
+
+| VALUE
+| `* 31:0 when CSR[mstatus].UXL == 0
+* 63:0 when CSR[mstatus].UXL == 1
+`
+| Tile side length (N)
+
+|===
+
+==== ameudsz
+
+Holds `AME_UNIT_DATATYPE_SIZE`, the element size in bits at which exactly one
+square fits in a single M register.
+
+The value is a design-time constant.  Software reads this CSR together with
+a datatype encoding to compute the *group size*: the number of consecutive M
+registers required to hold one square:
+
+  group_size = dtype_size_bits / AME_UNIT_DATATYPE_SIZE
+
+where `dtype_size_bits` is bits [7:0] of the 32-bit datatype encoding.
+Compute datatypes always have `dtype_size_bits >= AME_UNIT_DATATYPE_SIZE`, so
+`group_size >= 1`.  When `group_size > 1`, the register index used with any
+instruction must be a multiple of `group_size`.
+
+This CSR is analogous to `vlenb` in RISC-V Vector code: software reads it
+once at function entry to derive all register-grouping and stride calculations
+without hardcoding any implementation-specific constant.
+
+
+|===
+| Field | Location | Description
+
+| VALUE
+| `* 31:0 when CSR[mstatus].UXL == 0
+* 63:0 when CSR[mstatus].UXL == 1
+`
+| Unit datatype size (AME_UNIT_DATATYPE_SIZE) in bits
+
+|===
+
+==== amestatus
+
+TODO
+
+
+|===
+| Field | Location | Description
+
+| UN
+| `0`
+| Unsupported flag
+
+|===

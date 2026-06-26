@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 180" font-family="Arial, sans-serif">
+
+  <rect width="820" height="180" fill="white"/>
+
+  <!-- Column dividers -->
+  <line x1="258" y1="5" x2="258" y2="175" stroke="#ddd" stroke-width="1" stroke-dasharray="4,3"/>
+  <line x1="565" y1="5" x2="565" y2="175" stroke="#ddd" stroke-width="1" stroke-dasharray="4,3"/>
+
+
+  <!-- ═══════════════════════════════════════════
+       CASE 1: EXACT FIT
+       ═══════════════════════════════════════════ -->
+
+  <text x="152" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e1e1e">Exact fit</text>
+
+  <!-- Register M[i] — all slots filled -->
+  <text x="47" y="62" text-anchor="end" font-size="11" fill="#1e1e1e">M[i]</text>
+  <rect x="52" y="42" width="200" height="38" fill="#AED6F1" stroke="#1e1e1e" stroke-width="1.5"/>
+  <!-- Slot dividers (4 slots × 50 px each) -->
+  <line x1="102" y1="42" x2="102" y2="80" stroke="#2471A3" stroke-width="0.8"/>
+  <line x1="152" y1="42" x2="152" y2="80" stroke="#2471A3" stroke-width="0.8"/>
+  <line x1="202" y1="42" x2="202" y2="80" stroke="#2471A3" stroke-width="0.8"/>
+  <!-- Element labels -->
+  <text x="77"  y="65" text-anchor="middle" font-size="9" fill="#1A5276">e0</text>
+  <text x="127" y="65" text-anchor="middle" font-size="9" fill="#1A5276">e1</text>
+  <text x="177" y="65" text-anchor="middle" font-size="9" fill="#1A5276">…</text>
+  <text x="227" y="65" text-anchor="middle" font-size="9" fill="#1A5276">eN-1</text>
+
+  <!-- Caption -->
+  <text x="152" y="97"  text-anchor="middle" font-size="11" fill="#333">sizeof(dtype) =</text>
+  <text x="152" y="112" text-anchor="middle" font-size="10" fill="#333">AME_UNIT_DATATYPE_SIZE</text>
+  <text x="152" y="129" text-anchor="middle" font-size="10" fill="#888">(e.g., fp32 when unit is 32 b)</text>
+
+
+  <!-- ═══════════════════════════════════════════
+       CASE 2: MULTIPLE M REGISTERS (GROUP)
+       ═══════════════════════════════════════════ -->
+
+  <text x="415" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e1e1e">Multiple M registers (group)</text>
+
+  <!-- Register M[i] — solid block -->
+  <text x="298" y="57" text-anchor="end" font-size="11" fill="#1e1e1e">M[i]</text>
+  <rect x="303" y="38" width="200" height="34" fill="#AED6F1" stroke="#1e1e1e" stroke-width="1.5"/>
+  <text x="403" y="59" text-anchor="middle" font-size="10" font-style="italic" fill="#1A5276">square data</text>
+
+  <!-- Register M[i+1] — solid block -->
+  <text x="298" y="95" text-anchor="end" font-size="11" fill="#1e1e1e">M[i+1]</text>
+  <rect x="303" y="76" width="200" height="34" fill="#AED6F1" stroke="#1e1e1e" stroke-width="1.5"/>
+  <text x="403" y="97" text-anchor="middle" font-size="10" font-style="italic" fill="#1A5276">square data</text>
+
+  <!-- Group bracket on right -->
+  <line x1="507" y1="38"  x2="516" y2="38"  stroke="#555" stroke-width="1.5"/>
+  <line x1="516" y1="38"  x2="516" y2="110" stroke="#555" stroke-width="1.5"/>
+  <line x1="507" y1="110" x2="516" y2="110" stroke="#555" stroke-width="1.5"/>
+  <text x="520" y="74" font-size="10" fill="#555" dominant-baseline="middle">group</text>
+
+  <!-- Caption -->
+  <text x="415" y="138" text-anchor="middle" font-size="11" fill="#333">sizeof(dtype) = 2 × AME_UNIT_DATATYPE_SIZE</text>
+  <text x="415" y="155" text-anchor="middle" font-size="10" fill="#888">(e.g., fp64 when unit is 32 b)</text>
+
+
+  <!-- ═══════════════════════════════════════════
+       CASE 3: PACKED STORAGE-ONLY
+       ═══════════════════════════════════════════ -->
+
+  <text x="698" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e1e1e">Storage-only (packed)</text>
+
+  <!-- Register M[i] — two packed sub-squares side by side -->
+  <text x="593" y="62" text-anchor="end" font-size="11" fill="#1e1e1e">M[i]</text>
+  <!-- Full register border -->
+  <rect x="598" y="42" width="200" height="38" fill="none" stroke="#1e1e1e" stroke-width="1.5"/>
+  <!-- Sub-square 0 (left half, blue) -->
+  <rect x="599" y="43" width="98" height="36" fill="#AED6F1"/>
+  <!-- Sub-square 1 (right half, green) -->
+  <rect x="698" y="43" width="99" height="36" fill="#A9DFBF"/>
+  <!-- Thick divider between sq0 and sq1 -->
+  <line x1="698" y1="42" x2="698" y2="80" stroke="#1e1e1e" stroke-width="2"/>
+  <!-- Slot dividers inside sq0 -->
+  <line x1="632" y1="43" x2="632" y2="79" stroke="#2471A3" stroke-width="0.8"/>
+  <line x1="665" y1="43" x2="665" y2="79" stroke="#2471A3" stroke-width="0.8"/>
+  <!-- Slot dividers inside sq1 -->
+  <line x1="731" y1="43" x2="731" y2="79" stroke="#1E8449" stroke-width="0.8"/>
+  <line x1="764" y1="43" x2="764" y2="79" stroke="#1E8449" stroke-width="0.8"/>
+  <!-- Sub-square labels -->
+  <text x="648" y="55" text-anchor="middle" font-size="9" font-style="italic" fill="#1A5276">sq 0</text>
+  <text x="748" y="55" text-anchor="middle" font-size="9" font-style="italic" fill="#1E8449">sq 1</text>
+  <!-- Element labels in sq0 -->
+  <text x="615" y="72" text-anchor="middle" font-size="8" fill="#1A5276">e0</text>
+  <text x="648" y="72" text-anchor="middle" font-size="8" fill="#1A5276">…</text>
+  <text x="681" y="72" text-anchor="middle" font-size="8" fill="#1A5276">eN-1</text>
+  <!-- Element labels in sq1 -->
+  <text x="714" y="72" text-anchor="middle" font-size="8" fill="#1E8449">e0</text>
+  <text x="748" y="72" text-anchor="middle" font-size="8" fill="#1E8449">…</text>
+  <text x="782" y="72" text-anchor="middle" font-size="8" fill="#1E8449">eN-1</text>
+
+  <!-- Caption -->
+  <text x="698" y="97"  text-anchor="middle" font-size="11" fill="#333">sizeof(dtype) &lt; AME_UNIT_DATATYPE_SIZE</text>
+  <text x="698" y="113" text-anchor="middle" font-size="10" fill="#888">(pack_factor = 2 shown; e.g., int8, unit = 16 b)</text>
+
+</svg>

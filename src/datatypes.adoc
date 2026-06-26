@@ -1,0 +1,251 @@
+[[datatypes]]
+== Datatypes
+:imagesdir: ../images
+
+AME uses a 32-bit datatype specifier encoded as follows:
+
+|===
+| Position | Meaning
+
+| `31`   | `0` = standard, `1` = custom
+| `30:7` | Datatype properties
+| `7:0`  | Datatype size, in bits
+|===
+
+Standard datatype encodings will never begin with '1'.
+Conforming implementations must encode custom datatypes with a leading '1'.
+
+A zero datatype encoding is reserved to mean 'uninitialized'.
+
+By convention, the lowest bits after the datatype size are used to specify the datatype family
+(e.g., integer, floating-point) and the upper bits are used first to distinguish types within the
+family. This allows the number of families to grow over time if needed without needing to know
+a-priori how many families will need to be supported over time.
+
+AME follows an encoding convention, and the datatypes defined in AME v1.0 follow that convention.
+However, each datatype encoding should still be treated as an enumeration value, not as a format
+that software should decode by assumption.
+RISC-V may introduce future data types that do not follow the current convention.
+
+
+=== Integer datatype class
+
+Integer type properties occupy bits `30:9` when bit 8 is `0`.
+Integer types are distinguished by size/precision, signedness, and saturation behavior.
+
+|===
+| Position | Field | Values
+
+| `31`
+| Custom
+| `0`
+
+| `30`
+| Sign
+| `0` = unsigned, `1` = signed
+
+| `29`
+| Saturation
+| `1` = saturate, `0` - overflow
+
+| `28:9`
+| (reserved)
+| Must be zero
+
+| `8`
+| Integer specifier
+| `0`
+
+| `7:0`
+| Size
+| Size, in bits of the datatype
+
+|===
+
+Integer types are two's complement binary numbers.
+
+.Standard Integer Types
+|===
+^| Type 6+^| Encoding
+
+|            h| Custom  h| Sgn   h| Sat  h|  Rsv   h| Int  h|  Size
+|            h| `31` h|  `30` h| `29` h| `28:9` h|  `8` h|    `7:0`
+| Int4        | `0`   | `1`    | `0`   | `0..0`  | `0`   | `00000100`
+| Uint4       | `0`   | `0`    | `0`   | `0..0`  | `0`   | `00000100`
+| Int8        | `0`   | `1`    | `0`   | `0..0`  | `0`   | `00001000`
+| Uint8       | `0`   | `0`    | `0`   | `0..0`  | `0`   | `00001000`
+| Int16       | `0`   | `1`    | `0`   | `0..0`  | `0`   | `00010000`
+| Uint16      | `0`   | `0`    | `0`   | `0..0`  | `0`   | `00010000`
+| Int32       | `0`   | `1`    | `0`   | `0..0`  | `0`   | `00100000`
+| Uint32      | `0`   | `0`    | `0`   | `0..0`  | `0`   | `00100000`
+| Int64       | `0`   | `1`    | `0`   | `0..0`  | `0`   | `01000000`
+| Uint64      | `0`   | `0`    | `0`   | `0..0`  | `0`   | `01000000`
+| Int128      | `0`   | `1`    | `0`   | `0..0`  | `0`   | `10000000`
+| Uint128     | `0`   | `0`    | `0`   | `0..0`  | `0`   | `10000000`
+| Int4_Sat    | `0`   | `1`    | `1`   | `0..0`  | `0`   | `00000100`
+| Uint4_Sat   | `0`   | `0`    | `1`   | `0..0`  | `0`   | `00000100`
+| Int8_Sat    | `0`   | `1`    | `1`   | `0..0`  | `0`   | `00001000`
+| Uint8_Sat   | `0`   | `0`    | `1`   | `0..0`  | `0`   | `00001000`
+| Int16_Sat   | `0`   | `1`    | `1`   | `0..0`  | `0`   | `00010000`
+| Uint16_Sat  | `0`   | `0`    | `1`   | `0..0`  | `0`   | `00010000`
+| Int32_Sat   | `0`   | `1`    | `1`   | `0..0`  | `0`   | `00100000`
+| Uint32_Sat  | `0`   | `0`    | `1`   | `0..0`  | `0`   | `00100000`
+| Int64_Sat   | `0`   | `1`    | `1`   | `0..0`  | `0`   | `01000000`
+| Uint64_Sat  | `0`   | `0`    | `1`   | `0..0`  | `0`   | `01000000`
+| Int128_Sat  | `0`   | `1`    | `1`   | `0..0`  | `0`   | `10000000`
+| Uint128_Sat | `0`   | `0`    | `1`   | `0..0`  | `0`   | `10000000`
+|===
+
+=== IEEE floating-point class
+
+The IEEE floating-point class holds data types that either are IEEE 754 floating point or
+behave similarly to it with small modifications.
+
+We classify datatype in the class by whether or not it is signed, exponent size, presence of NaN,
+presence of infinity, and rounding mode. The mantissa width is implicit:
+`mantissa_bits = element_size - exp_width - 1` (one bit for the sign).
+
+Note that AME ties rounding mode to the datatype.
+There is no global/dynamic rounding mode like `fcsr.FRM` provides in the RISC-V F/D/V extensions.
+The rounding mode of an operation is determined by the datatype of the destination register.
+
+.IEEE floating-point class encoding convention
+|===
+| Position | Field | Values
+
+| `31`
+| Custom
+| `0`
+
+| `30:26`
+| exp_width
+| Number of exponent bits (e.g., `5` for FP16, `8` for BF16/FP32)
+
+| `25:22`
+| rounding_mode
+| `0000` = RNE, `0001` = RTZ, `0010` = RDN, `0011` = RUP, `0100` = RMM, `0101` = RNO, others reserved
+
+| `21`
+| Inf
+| `1` = ±infinity if signed, infinity if unsigned, `0` = Saturate to min/max
+
+| `20`
+| Denorm
+| `1` = Use denormals, `0` = flush-to-zero
+
+| `19:9`
+| (reserved)
+| Must be zero
+
+| `8`
+| FP
+| `1`
+
+| `7:0`
+| Size
+| Size, in bits of the datatype
+
+|===
+
+.Standard Floating Point Types
+|===
+^| Type 8+^| Encoding
+
+|            h| Std  h| Exp_W    h| Rnd      h| Inf  h| Denorm  h|  Rsv    h|  FP  h|  Size
+|            h| `31` h| `30:26`  h| `25:22`  h| `21` h| `20`     h| `19:9`  h|  `8` h|  `7:0`
+| FP16        | `0`   | `00101`   | `xxxx`    | `1`   | `1`       | `0..0`  | `1`   | `00010000`
+| BF16        | `0`   | `01000`   | `xxxx`    | `1`   | `1`       | `0..0`  | `1`   | `00010000`
+| FP32        | `0`   | `01000`   | `xxxx`    | `1`   | `1`       | `0..0`  | `1`   | `00100000`
+| FP64        | `0`   | `01011`   | `xxxx`    | `1`   | `1`       | `0..0`  | `1`   | `01000000`
+| OCP_E4M3    | `0`   | `00100`   | `xxxx`    | `0`   | `1`       | `0..0`  | `1`   | `00001000`
+| OCP_E5M2    | `0`   | `00101`   | `xxxx`    | `1`   | `1`       | `0..0`  | `1`   | `00001000`
+|===
+
+
+
+=== Storage-only datatypes
+
+A datatype whose size (bits 7:0) is greater than zero and less than
+`<<udb:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>>` is called a *storage-only datatype*.
+Storage-only datatypes are used to pack data efficiently in memory and in M registers,
+but they cannot be used directly as operands in compute instructions.
+
+When an M register is programmed with a storage-only datatype, it holds data *packed*:
+a single register contains `pack_factor = AME_UNIT_DATATYPE_SIZE / sizeof(dtype)` logical
+squares. For example, with `AME_UNIT_DATATYPE_SIZE` = 16 bits and an 8-bit storage type,
+`pack_factor` = 2: one M register holds two squares of 8-bit elements.
+
+Attempting to use a storage-only M register as an operand in a compute instruction
+(any 1D or 2D operation) results in `amestatus.UN` being set and the instruction returning
+without writing any output register. This is the discovery mechanism for storage-only support:
+software can probe which storage-only datatypes an implementation supports by attempting
+`mconv.ew` and inspecting `amestatus.UN`.
+
+To use data loaded from a storage-only register, software must first convert it to a
+compute datatype (size >= `AME_UNIT_DATATYPE_SIZE`) using the
+`<<udb:doc:inst:mconv_ew,mconv.ew>>` instruction, which expands one packed storage-only
+M register into `pack_factor` compute-dtype M registers.
+
+Standard storage-only datatypes include Int4 and Uint4 (when `AME_UNIT_DATATYPE_SIZE` > 4),
+and Int8/Uint8 (when `AME_UNIT_DATATYPE_SIZE` > 8).
+Whether any given storage-only type is supported is implementation-defined.
+
+=== Discovery
+
+The AME specification represents a large state space of possible datatypes and operations.
+
+Implementations are expected to support a small fraction of the possible space.
+Because of this, AME includes a discovery mechanism for software to determine which
+datatypes, conversions, and operations are supported.
+
+The <<udb:doc:csr:amestatus,amestatus>> CSR contains a <<udb:doc:csr_field:amestatus:UN,amestatus.UN>>
+field that is set whenever an implemented AME instruction is executed with unsupported datatypes.
+This serves as a reliable way to test any combination of operation/datatype.
+
+The overall datatypes supported can also be tested by checking <<udb:doc:csr_field:amestatus:UN,amestatus.UN>>.
+after an `msettyp` instruction.
+
+.Testing for datatype support in an `M` register
+[source,bash]
+====
+  csrw amestatus, 0
+  li t0, 0x40000008    # Int4
+  msettyp m0, t0
+  csrr t1, amestatus
+  andi t1, t1, 1
+  bnez t1, int4_m_supported
+====
+
+.Testing for datatype support in an `Acc` register
+[source,bash]
+====
+  csrw amestatus, 0
+
+  li t0, 0x40000020    # Int32
+  asettyp acc0, t0
+
+  csrr t1, amestatus
+  andi t1, t1, 1
+  bnez t1, int32_acc_supported
+====
+
+A specific operation can also be tested by trying it and checking <<udb:doc:csr_field:amestatus:UN,amestatus.UN>>.
+
+.Testing for int8 -> int32 widening accumulation
+[source,bash]
+====
+  # assume that Int8 is supported in M and Int32 is supported in Acc
+
+  li t0, 0x40000008    # Int8
+  msettyp m0, t0
+  li t1, 0x40000020    # Int32
+  asettyp acc0, t0
+
+  csrw amestatus, 0    # clear amestatus.UN
+
+  mmulacc.2d acc0, m0, m0
+
+  csrr t1, amestatus
+  andi t1, t1, 1
+  bnez t1, widening_8_32_matmul_supported
+====
