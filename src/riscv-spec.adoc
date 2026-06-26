@@ -1,8 +1,8 @@
-= Attached Matrix Extension (Zvame)
+= Attached Matrix Extension (Ztt)
 Authors: Derek Hower, Luca Maroncelli, Eric Mahurin, Siqi Zhao, Qiu Jing, Xiang Xiaoyan
 include::../docs-resources/global-config.adoc[]
 :docgroup: AME TG
-:description: Attached Matrix Extension (Zvame)
+:description: Attached Matrix Extension (Ztt)
 ifdef::build-commit[]
 :version-label: Commit
 :revnumber: {build-commit}
