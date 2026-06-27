@@ -10559,4 +10559,3 @@ if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperati
   Acc[acc] = <<udb:doc:func:ame_xform_rm_to_impl,ame_xform_rm_to_impl>>pass:[(]result, dest_dtype);
 }
 ----
-

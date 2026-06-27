@@ -12,7 +12,7 @@ Returns true if dtype is a supported datatype, false otherwise.
 
 Returns false if dtype is 0 (no datatype).
 Returns false if dtype is not a known datatype ID.
-  
+
 
 |===
 h| Return Type l| Boolean
@@ -23,7 +23,7 @@ h| Arguments   l| Bits<32> dtype
 [#udb:doc:func:ame_op_supported]
 === `ame_op_supported`
 Returns true if src1 op src2 = dest is a supported operation for the given datatypes
-  
+
 
 |===
 h| Return Type l| Boolean
@@ -41,7 +41,7 @@ Returns true if dtype_val is a storage-only datatype: its size in bits (bits 7:0
 greater than zero and less than AME_UNIT_DATATYPE_SIZE.
 Storage-only datatypes are packed in M registers (pack_factor = AME_UNIT_DATATYPE_SIZE / size
 squares per register) and cannot be used as operands in compute instructions.
-  
+
 
 |===
 h| Return Type l| Boolean
@@ -57,7 +57,7 @@ return size > 0 && size < AME_UNIT_DATATYPE_SIZE;
 [#udb:doc:func:ame_dtype_val_to_size]
 === `ame_dtype_val_to_size`
 Given an integral datatype value, return the size of the datatype in bits
-  
+
 
 |===
 h| Return Type l| Bits<AME_MAX_DTYPE_SIZE>
@@ -72,7 +72,7 @@ return dtype_val[7:0];
 [#udb:doc:func:implemented?]
 === `implemented?` (generated)
 Return true if the implementation supports `extension`.
-  
+
 
 |===
 h| Return Type l| Boolean
@@ -83,11 +83,11 @@ h| Arguments   l| ExtensionName extension
 [#udb:doc:func:mode]
 === `mode`
 Returns the current active privilege mode.
-  
+
 
 |===
 h| Return Type l| PrivilegeMode
-h| Arguments   l| 
+h| Arguments   l|
 |===
 
 [subs="specialchars,macros"]
@@ -107,7 +107,7 @@ to any emulation, since it is unclear what to do next.
 
 The single argument _why_ is a string describing why the hart entered an
 unpredictable state.
-  
+
 
 |===
 h| Return Type l| void
@@ -120,18 +120,18 @@ h| Arguments   l| String why
 Indicate that the IDL line should be unreachable.
 
 If this function is called, it represents a bug in the IDL code.
-  
+
 
 |===
 h| Return Type l| void
-h| Arguments   l| 
+h| Arguments   l|
 |===
 
 
 [#udb:doc:func:exception_handling_mode]
 === `exception_handling_mode`
 Returns the target privilege mode that will handle synchronous exception `exception_code`
-  
+
 
 |===
 h| Return Type l| PrivilegeMode
@@ -166,11 +166,11 @@ if pass:[(]<<udb:doc:func:mode,mode>>pass:[(]) == PrivilegeMode::M) {
 [#udb:doc:func:mtval_readonly?]
 === `mtval_readonly?`
 Returns whether or not CSR[mtval] is read-only based on implementation options
-  
+
 
 |===
 h| Return Type l| Boolean
-h| Arguments   l| 
+h| Arguments   l|
 |===
 
 [subs="specialchars,macros"]
@@ -182,7 +182,7 @@ return !(REPORT_VA_IN_MTVAL_ON_BREAKPOINT || REPORT_VA_IN_MTVAL_ON_LOAD_MISALIGN
 === `mtval_for`
 Given an exception code and a *legal* non-zero value for mtval,
 returns the value to be written in mtval considering implementation options
-  
+
 
 |===
 h| Return Type l| XReg
@@ -223,11 +223,11 @@ if pass:[(]exception_code == ExceptionCode::Breakpoint) {
 [#udb:doc:func:stval_readonly?]
 === `stval_readonly?`
 Returns whether or not CSR[stval] is read-only based on implementation options
-  
+
 
 |===
 h| Return Type l| Boolean
-h| Arguments   l| 
+h| Arguments   l|
 |===
 
 [subs="specialchars,macros"]
@@ -243,7 +243,7 @@ if pass:[(]<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::S)) 
 === `stval_for`
 Given an exception code and a *legal* non-zero value for stval,
 returns the value to be written in stval considering implementation options
-  
+
 
 |===
 h| Return Type l| XReg
@@ -284,11 +284,11 @@ if pass:[(]exception_code == ExceptionCode::Breakpoint) {
 [#udb:doc:func:vstval_readonly?]
 === `vstval_readonly?`
 Returns whether or not CSR[vstval] is read-only based on implementation options
-  
+
 
 |===
 h| Return Type l| Boolean
-h| Arguments   l| 
+h| Arguments   l|
 |===
 
 [subs="specialchars,macros"]
@@ -304,7 +304,7 @@ if pass:[(]<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::H)) 
 === `vstval_for`
 Given an exception code and a *legal* non-zero value for vstval,
 returns the value to be written in vstval considering implementation options
-  
+
 
 |===
 h| Return Type l| XReg
@@ -345,7 +345,7 @@ if pass:[(]exception_code == ExceptionCode::Breakpoint) {
 [#udb:doc:func:notify_mode_change]
 === `notify_mode_change` (builtin)
 Called whenever the privilege mode changes. Downstream tools can use this to hook events.
-  
+
 
 |===
 h| Return Type l| void
@@ -356,7 +356,7 @@ h| Arguments   l| PrivilegeMode new_mode, PrivilegeMode old_mode
 [#udb:doc:func:implemented_version?]
 === `implemented_version?` (generated)
 Return true if the implementation supports `extension` meeting 'version_requirement'.
-  
+
 
 |===
 h| Return Type l| Boolean
@@ -381,11 +381,11 @@ needs to be called after any state update that could change a pending interrupt.
    - CSR[hgeip]
    - CSR[hgeie]
    - mode changes
-  
+
 
 |===
 h| Return Type l| void
-h| Arguments   l| 
+h| Arguments   l|
 |===
 
 [subs="specialchars,macros"]
@@ -416,7 +416,7 @@ pending_and_enabled_interrupts = 0;
 [#udb:doc:func:set_mode]
 === `set_mode`
 Set the current privilege mode to `new_mode`
-  
+
 
 |===
 h| Return Type l| void
@@ -435,18 +435,18 @@ if pass:[(]new_mode != current_mode) {
 [#udb:doc:func:abort_current_instruction]
 === `abort_current_instruction` (builtin)
 Abort the current instruction, and start refetching from $pc.
-  
+
 
 |===
 h| Return Type l| void
-h| Arguments   l| 
+h| Arguments   l|
 |===
 
 
 [#udb:doc:func:raise_precise]
 === `raise_precise`
 Raise synchronous exception number `exception_code`.
-  
+
 
 |===
 h| Return Type l| void
@@ -530,7 +530,7 @@ The exception may be imprecise, and will cause execution to enter an
 unpredictable state, if PRECISE_SYNCHRONOUS_EXCEPTIONS is false.
 
 Otherwise, the exception will be precise.
-  
+
 
 |===
 h| Return Type l| void
@@ -550,7 +550,7 @@ if pass:[(]!PRECISE_SYNCHRONOUS_EXCEPTIONS) {
 === `ame_xform_impl_to_rm` (builtin)
 Given a square in implementation-defined format, return the row-major
 representation of the square.
-  
+
 
 |===
 h| Return Type l| Bits<AME_MAX_SQUARE_SIZE>
@@ -563,7 +563,7 @@ h| Arguments   l| Bits<AME_MAX_SQUARE_SIZE> impl_square, Bits<8> dtype
 Returns the result of src1 op src2 in dest_type.
 
 The bits above the destination datatype size are undefined, and should not be used.
-  
+
 
 |===
 h| Return Type l| Bits<AME_MAX_DTYPE_SIZE>
@@ -602,7 +602,7 @@ return result;
 === `ame_xform_rm_to_impl` (builtin)
 Given a square in row-major format, return the implementation-dependent
 representation of the square.
-  
+
 
 |===
 h| Return Type l| Bits<AME_MAX_SQUARE_SIZE>
@@ -613,7 +613,7 @@ h| Arguments   l| Bits<AME_MAX_SQUARE_SIZE> raster_square, Bits<8> dtype
 [#udb:doc:func:sqrt]
 === `sqrt`
 Integer square root of power of 4
-  
+
 
 |===
 h| Return Type l| Bits<64>
@@ -633,7 +633,7 @@ for pass:[(]U32 i = 0; i < 64; i++) {
 [#udb:doc:func:min]
 === `min`
 Returns the smaller of a or b
-  
+
 
 |===
 h| Return Type l| Bits<64>
@@ -648,7 +648,7 @@ return a < b ? a : b;
 [#udb:doc:func:is_naturally_aligned]
 === `is_naturally_aligned`
 Checks if value is naturally aligned to N bits.
-  
+
 
 |===
 h| Return Type l| Boolean
@@ -665,7 +665,7 @@ return (value & ~Mask) == value;
 [#udb:doc:func:assert]
 === `assert` (builtin)
 Assert that a condition is true. Failure represents an error in the IDL model.
-  
+
 
 |===
 h| Return Type l| void
@@ -676,11 +676,11 @@ h| Arguments   l| Boolean test, String message
 [#udb:doc:func:mpv]
 === `mpv`
 Returns the current value of CSR[mstatus].MPV (when MXLEN == 64) of CSR[mstatush].MPV (when MXLEN == 32)
-  
+
 
 |===
 h| Return Type l| Bits<1>
-h| Arguments   l| 
+h| Arguments   l|
 |===
 
 [subs="specialchars,macros"]
@@ -696,11 +696,11 @@ if pass:[(]<<udb:doc:func:implemented?,implemented?>>pass:[(]ExtensionName::H)) 
 === `effective_ldst_mode`
 Returns the effective privilege mode for normal explicit loads and stores, taking into account
 the current actual privilege mode and modifications from `mstatus.MPRV`.
-  
+
 
 |===
 h| Return Type l| PrivilegeMode
-h| Arguments   l| 
+h| Arguments   l|
 |===
 
 [subs="specialchars,macros"]
@@ -731,7 +731,7 @@ Possibly returns a cached translation result matching +vaddr+.
 
 CachedTranslationResult contains a Boolean 'valid' field. If valid,
 'result' is a usable translation. Otherwise, the cache lookup failed.
-  
+
 
 |===
 h| Return Type l| CachedTranslationResult
@@ -745,7 +745,7 @@ Returns the current first-stage translation mode for an explicit load or store
 from +mode+ given the machine state (e.g., value of `satp` or `vsatp` csr).
 
 Returns SatpMode::Reserved if the setting found in `satp` or `vsatp` is invalid.
-  
+
 
 |===
 h| Return Type l| SatpMode
@@ -877,11 +877,11 @@ if pass:[(]CSR[<<udb:doc:csr:misa,misa>>].<<udb:doc:csr_field:misa:H,H>> == 1'b1
 [#udb:doc:func:xlen]
 === `xlen`
 Returns the effective XLEN for the current privilege mode.
-  
+
 
 |===
 h| Return Type l| Bits<8>
-h| Arguments   l| 
+h| Arguments   l|
 |===
 
 [subs="specialchars,macros"]
@@ -938,7 +938,7 @@ if pass:[(]MXLEN == 32) {
 [#udb:doc:func:tinst_value_for_guest_page_fault]
 === `tinst_value_for_guest_page_fault`
 Returns the value of htinst/mtinst for a Guest Page Fault
-  
+
 
 |===
 h| Return Type l| XReg
@@ -998,7 +998,7 @@ if pass:[(]for_final_vs_pte) {
 [#udb:doc:func:raise_guest_page_fault]
 === `raise_guest_page_fault`
 Raise a guest page fault exception.
-  
+
 
 |===
 h| Return Type l| void
@@ -1054,7 +1054,7 @@ if pass:[(]handling_mode == PrivilegeMode::S) {
 === `pma_applies?` (builtin)
 Checks if _attr_ is applied to the entire physical address region
 between [paddr, paddr + len) based on static PMA attributes.
-  
+
 
 |===
 h| Return Type l| Boolean
@@ -1067,7 +1067,7 @@ h| Arguments   l| PmaAttribute          attr, Bits<PHYS_ADDR_WIDTH> paddr, U32  
 Return CSR info for a CSR with direct address +csr_addr+.
 
 If no CSR exists, <return_value>.valid == false
-  
+
 
 |===
 h| Return Type l| Csr
@@ -1078,7 +1078,7 @@ h| Arguments   l| Bits<12> csr_addr
 [#udb:doc:func:csr_hw_read]
 === `csr_hw_read` (generated)
 Returns the raw value of csr
-  
+
 
 |===
 h| Return Type l| Bits<64>
@@ -1089,7 +1089,7 @@ h| Arguments   l| Csr csr
 [#udb:doc:func:csr_sw_read]
 === `csr_sw_read` (generated)
 Returns the result of CSR[csr].sw_read(); i.e., the software view of the register
-  
+
 
 |===
 h| Return Type l| Bits<64>
@@ -1103,7 +1103,7 @@ Given a physical address, see if any PMP entry matches.
 
 If there is a complete match, return the PmpCfg that guards the region.
 If there is no match or a partial match, report that result.
-  
+
 
 |===
 h| Return Type l| PmpMatchResult, PmpCfg
@@ -1156,7 +1156,7 @@ Given a physical address, see if any PMP entry matches.
 
 If there is a complete match, return the PmpCfg that guards the region.
 If there is no match or a partial match, report that result.
-  
+
 
 |===
 h| Return Type l| PmpMatchResult, PmpCfg
@@ -1209,7 +1209,7 @@ Given a physical address, see if any PMP entry matches.
 
 If there is a complete match, return the PmpCfg that guards the region.
 If there is no match or a partial match, report that result.
-  
+
 
 |===
 h| Return Type l| PmpMatchResult, PmpCfg
@@ -1228,7 +1228,7 @@ if pass:[(]MXLEN == 64) {
 [#udb:doc:func:pmp_check]
 === `pmp_check`
 Given a physical address and operation type, return whether or not the access is allowed by PMP.
-  
+
 
 |===
 h| Return Type l| Boolean
@@ -1269,7 +1269,7 @@ return true;
 === `access_check`
 Checks if the physical address paddr is able to access memory, and raises
 the appropriate exception if not.
-  
+
 
 |===
 h| Return Type l| void
@@ -1291,7 +1291,7 @@ if pass:[(]NUM_PMP_ENTRIES > 0) {
 [#udb:doc:func:read_physical_memory_32]
 === `read_physical_memory_32` (builtin)
 Read four bytes from physical memory.
-  
+
 
 |===
 h| Return Type l| Bits<32>
@@ -1302,7 +1302,7 @@ h| Arguments   l| XReg paddr
 [#udb:doc:func:read_physical_memory]
 === `read_physical_memory`
 Read from physical memory.
-  
+
 
 |===
 h| Return Type l| XReg
@@ -1338,7 +1338,7 @@ Preconditions:
 
  * paddr will be aligned to 32-bits
 
-  
+
 
 |===
 h| Return Type l| Boolean
@@ -1358,7 +1358,7 @@ Implicit writes (updates of A/D) are also accessed checked, and may raise Access
 The translated address _is not_ accessed checked.
 
 Returns the translated physical address.
-  
+
 
 |===
 h| Return Type l| TranslationResult
@@ -1494,7 +1494,7 @@ for pass:[(]U32 i = (LEVELS - 1); i >= 0; i--) {
 [#udb:doc:func:read_physical_memory_64]
 === `read_physical_memory_64` (builtin)
 Read eight bytes from physical memory.
-  
+
 
 |===
 h| Return Type l| Bits<64>
@@ -1515,7 +1515,7 @@ returns true if the write occurs, and false otherwise
 Preconditions:
 
  * paddr will be aligned to 64-bits
-  
+
 
 |===
 h| Return Type l| Boolean
@@ -1526,7 +1526,7 @@ h| Arguments   l| Bits<PHYS_ADDR_WIDTH> paddr, Bits<64>              compare_val
 [#udb:doc:func:tinst_transform]
 === `tinst_transform`
 Returns the standard transformation of an encoding for htinst/mtinst
-  
+
 
 |===
 h| Return Type l| Bits<INSTR_ENC_SIZE>
@@ -1555,7 +1555,7 @@ if pass:[(]encoding[1:0] == 0b11) {
 [#udb:doc:func:translate_gstage]
 === `translate_gstage`
 Translates a guest physical address to a physical address.
-  
+
 
 |===
 h| Return Type l| TranslationResult
@@ -1605,7 +1605,7 @@ Implicit writes (updates of A/D) are also accessed checked, and may raise Access
 The translated address _is not_ accessed checked.
 
 Returns the translated guest physical address.
-  
+
 
 |===
 h| Return Type l| TranslationResult
@@ -1789,7 +1789,7 @@ for pass:[(]U32 I = (LEVELS - 1); I >= 0; I--) {
 === `maybe_cache_translation` (generated)
 Given a translation result, potentially cache the result for later use. This function models
 a TLB fill operation. A valid implementation does nothing.
-  
+
 
 |===
 h| Return Type l| void
@@ -1808,7 +1808,7 @@ May raise a Page Fault or Access Fault.
 
 The final physical address is *not* access checked (for PMP, PMA, etc., violations).
 (though intermediate page table reads will be)
-  
+
 
 |===
 h| Return Type l| TranslationResult
@@ -1863,7 +1863,7 @@ Read from virtual memory using a known aligned address.
 If +rl+ is 1, then the load also acts as a memory model release (applied after all
 checks pass but before the physical read).
 If +aq+ is 1, then the load also acts as a memory model acquire (applied after the read).
-  
+
 
 |===
 h| Return Type l| XReg
@@ -1892,7 +1892,7 @@ return value;
 [#udb:doc:func:in_naturally_aligned_region?]
 === `in_naturally_aligned_region?`
 Checks if a length-bit access starting at +address+ lies entirely within an N-bit naturally-aligned region.
-  
+
 
 |===
 h| Return Type l| Boolean
@@ -1911,7 +1911,7 @@ Returns true if an access starting at +physical_address+ that is +N+ bits long i
 
 This function takes into account any Atomicity Granule PMAs, so *it should not be used
 for load-reserved/store-conditional*, since those PMAs do not apply to those accesses.
-  
+
 
 |===
 h| Return Type l| Boolean
@@ -1937,7 +1937,7 @@ if pass:[(]<<udb:doc:func:pma_applies?,pma_applies?>>pass:[(]PmaAttribute::MAG16
 [#udb:doc:func:read_physical_memory_8]
 === `read_physical_memory_8` (builtin)
 Read a byte from physical memory.
-  
+
 
 |===
 h| Return Type l| Bits<8>
@@ -1949,7 +1949,7 @@ h| Arguments   l| XReg paddr
 === `read_memory`
 Read from virtual memory.
 
-  
+
 
 |===
 h| Return Type l| XReg
@@ -1993,7 +1993,7 @@ if pass:[(]!MISALIGNED_LDST) {
 [#udb:doc:func:read_physical_memory_16]
 === `read_physical_memory_16` (builtin)
 Read two bytes from physical memory.
-  
+
 
 |===
 h| Return Type l| Bits<16>
@@ -2004,7 +2004,7 @@ h| Arguments   l| XReg paddr
 [#udb:doc:func:read_memory_ame]
 === `read_memory_ame`
 Read dtype_size_btyes from memory
-  
+
 
 |===
 h| Return Type l| Bits<MXLEN>
@@ -2032,7 +2032,7 @@ if pass:[(]dtype_size_bytes == 4) {
 === `ame_xform_cm_to_impl` (builtin)
 Given a square in column-major format, return the implementation-dependent
 representation of the square.
-  
+
 
 |===
 h| Return Type l| Bits<AME_MAX_SQUARE_SIZE>
@@ -2044,7 +2044,7 @@ h| Arguments   l| Bits<AME_MAX_SQUARE_SIZE> cm_square, Bits<8> dtype
 === `ame_xform_impl_to_cm` (builtin)
 Given a square in implementation-defined format, return the column-major
 representation of the square.
-  
+
 
 |===
 h| Return Type l| Bits<AME_MAX_SQUARE_SIZE>
@@ -2055,7 +2055,7 @@ h| Arguments   l| Bits<AME_MAX_SQUARE_SIZE> impl_square, Bits<8> dtype
 [#udb:doc:func:write_physical_memory]
 === `write_physical_memory`
 Write to physical memory.
-  
+
 
 |===
 h| Return Type l| void
@@ -2084,7 +2084,7 @@ Write to virtual memory using a known aligned address.
 If +rl+ is 1, then the store also acts as a memory model release (applied after all
 checks pass but before the physical write).
 If +aq+ is 1, then the store also acts as a memory model acquire.
-  
+
 
 |===
 h| Return Type l| void
@@ -2108,7 +2108,7 @@ if pass:[(]aq == 1'b1) {
 [#udb:doc:func:write_physical_memory_8]
 === `write_physical_memory_8` (builtin)
 Write a byte to physical memory.
-  
+
 
 |===
 h| Return Type l| void
@@ -2119,7 +2119,7 @@ h| Arguments   l| XReg paddr, Bits<8> value
 [#udb:doc:func:write_memory]
 === `write_memory`
 Write to virtual memory
-  
+
 
 |===
 h| Return Type l| void
@@ -2163,7 +2163,7 @@ if pass:[(]!MISALIGNED_LDST) {
 [#udb:doc:func:write_physical_memory_16]
 === `write_physical_memory_16` (builtin)
 Write two bytes to physical memory.
-  
+
 
 |===
 h| Return Type l| void
@@ -2174,7 +2174,7 @@ h| Arguments   l| XReg paddr, Bits<16> value
 [#udb:doc:func:write_physical_memory_32]
 === `write_physical_memory_32` (builtin)
 Write four bytes to physical memory.
-  
+
 
 |===
 h| Return Type l| void
@@ -2185,7 +2185,7 @@ h| Arguments   l| XReg paddr, Bits<32> value
 [#udb:doc:func:write_physical_memory_64]
 === `write_physical_memory_64` (builtin)
 Write eight bytes to physical memory.
-  
+
 
 |===
 h| Return Type l| void
@@ -2196,7 +2196,7 @@ h| Arguments   l| XReg paddr, Bits<64> value
 [#udb:doc:func:write_memory_ame]
 === `write_memory_ame`
 Write dtype_size_bytes of data to memory.
-  
+
 
 |===
 h| Return Type l| void
@@ -2219,4 +2219,3 @@ if pass:[(]dtype_size_bytes == 4) {
   <<udb:doc:func:unreachable,unreachable>>pass:[(]"Unsupported dtype size");
 }
 ----
-

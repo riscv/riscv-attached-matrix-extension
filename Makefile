@@ -44,7 +44,7 @@ ifneq ($(WAVEDROM),)
 OPTIONS += -a wavedrom=$(WAVEDROM)
 endif
 
-.PHONY: default pdf clean
+.PHONY: default pdf clean build-tags
 
 default: pdf
 
@@ -59,6 +59,9 @@ $(BUILD_DIR)/$(OUTFILE): $(SRC_DIR)/riscv-spec.adoc $(ALL_SRCS) $(ALL_IMAGES)
 		$<
 	@echo ""
 	@echo "SUCCESS. Wrote PDF to $@"
+
+build-tags:
+	@echo "No normative tags for AME spec"
 
 clean:
 	rm -rf $(BUILD_DIR)
