@@ -185,5 +185,3 @@ This parameter enables AME as a standard to scale a wide range of markets.
 
 Type::
 positive 64-bit power of two
-
-

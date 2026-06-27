@@ -193,9 +193,9 @@ if applicable, G-stage translation when run within a hypervisor.
 
 AME provides memory storage variants that operate on one of three memory layouts:
 
-*	Row-major (`mls.rm` / `mss.rm`)
-*	Column-major (`mls.cm` / `mss.cm`)
-*	Opaque, implementation-defined (`mls` / `mss`)
+*  Row-major (`mls.rm` / `mss.rm`)
+*  Column-major (`mls.cm` / `mss.cm`)
+*  Opaque, implementation-defined (`mls` / `mss`)
 
 The row-major and column-major variants are called the _interoperability_ storage instructions.
 They transfer data as a contiguous block — no striding or partial-tile predication is supported.
@@ -217,12 +217,12 @@ Ordering is restored with QQQ (fence.ame instruction, ldaq, strl).
 
 AME supports six broad classes of arithmetic and/or logical operators:
 
-*	2D Matrix multiply
-*	1D Element-wise/vector
-*	Intra-tensor (reduction/expansion/permutation)
-*	Register move / data conversion
-*	Scalar broadcast
-*	Load/store
+*  2D Matrix multiply
+*  1D Element-wise/vector
+*  Intra-tensor (reduction/expansion/permutation)
+*  Register move / data conversion
+*  Scalar broadcast
+*  Load/store
 
 AME does not support general masking/predication on computational instructions, though a future extension may add support.
 

@@ -379,4 +379,3 @@ memory_model_release::
 [#udb:doc:inst:mbcast_f]
 mbcast_f::
   See the AME instruction listing for details on `mbcast_f`.
-
