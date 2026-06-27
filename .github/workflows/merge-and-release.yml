@@ -12,14 +12,16 @@ on:
 jobs:
   on-success:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/riscv/riscv-docs-base-container-image:latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          submodules: recursive
+          submodules: false
 
-      - run: |
-          echo The PR was successfully merged.
+      - run: echo The PR was successfully merged.
 
       - name: Set short SHA
         run: echo "SHORT_SHA=$(echo ${GITHUB_SHA::7})" >> $GITHUB_ENV
@@ -27,49 +29,16 @@ jobs:
       - name: Get current date
         run: echo "CURRENT_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
-      - name: Build Files
+      - name: Build PDF
         id: build_files
-        run: make -j$(nproc) RELEASE_TYPE=intermediate
+        run: make pdf
 
-    # Upload the riscv-spec PDF file
-      - name: Upload riscv-spec.pdf
+      - name: Upload Zvame PDF
         if: steps.build_files.outcome == 'success'
         uses: actions/upload-artifact@v7
         with:
-          name: riscv-spec-${{ env.SHORT_SHA }}.pdf
-          path: ${{ github.workspace }}/build/riscv-spec.pdf
-
-    # Upload the riscv-spec HTML file
-      - name: Upload riscv-spec.html
-        if: steps.build_files.outcome == 'success'
-        uses: actions/upload-artifact@v7
-        with:
-          name: riscv-spec-${{ env.SHORT_SHA }}.html
-          path: ${{ github.workspace }}/build/riscv-spec.html
-
-    # Upload the riscv-spec EPUB file
-      - name: Upload riscv-spec.epub
-        if: steps.build_files.outcome == 'success'
-        uses: actions/upload-artifact@v7
-        with:
-          name: riscv-spec-${{ env.SHORT_SHA }}.epub
-          path: ${{ github.workspace }}/build/riscv-spec.epub
-
-    # Upload norm-rules.html
-      - name: Upload norm-rules.html
-        if: steps.build_files.outcome == 'success'
-        uses: actions/upload-artifact@v7
-        with:
-          name: norm-rules-${{ env.SHORT_SHA }}.html
-          path: ${{ github.workspace }}/build/norm-rules.html
-
-    # Upload norm-rules.json
-      - name: Upload norm-rules.json
-        if: steps.build_files.outcome == 'success'
-        uses: actions/upload-artifact@v7
-        with:
-          name: norm-rules-${{ env.SHORT_SHA }}.json
-          path: ${{ github.workspace }}/build/norm-rules.json
+          name: Zvame-0.1-${{ env.SHORT_SHA }}.pdf
+          path: ${{ github.workspace }}/build/Zvame-0.1.pdf
 
       - name: Create Release
         uses: softprops/action-gh-release@v3.0.0
@@ -84,10 +53,6 @@ jobs:
           generate_release_notes: true
           body: |
             This release was created by: ${{ github.event.sender.login }}
-            Release of RISC-V ISA, built from commit ${{ env.SHORT_SHA }}, is now available.
+            Release of AME (Zvame) specification, built from commit ${{ env.SHORT_SHA }}, is now available.
           files: |
-            ${{ github.workspace }}/build/riscv-spec.pdf
-            ${{ github.workspace }}/build/riscv-spec.html
-            ${{ github.workspace }}/build/riscv-spec.epub
-            ${{ github.workspace }}/build/norm-rules.html
-            ${{ github.workspace }}/build/norm-rules.json
+            ${{ github.workspace }}/build/Zvame-0.1.pdf
