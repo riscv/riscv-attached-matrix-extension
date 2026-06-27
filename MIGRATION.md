@@ -2,7 +2,7 @@
 
 ## Overview
 
-Migrated the AME (Zvame) specification from the `riscv-ame` repository's
+Migrated the AME (Ztt) specification from the `riscv-ame` repository's
 UDB-dependent build pipeline to a self-contained document repository that
 can produce PDF output without any external dependencies on UDB, LLVM
 submodules, or Ruby ERB template processing.
@@ -29,7 +29,7 @@ submodules, or Ruby ERB template processing.
 ### Images (`src/images/`)
 
 - 106 wavedrom SVG diagrams (pre-rendered from original build)
-- 6 custom SVG/PNG diagrams (ame_state, ame-square-*, zvame_regfiles, gemm-portable, ame_datapath, ame_logical_view)
+- 6 custom SVG/PNG diagrams (ame_state, ame-square-*, ztt_regfiles, gemm-portable, ame_datapath, ame_logical_view)
 - 3 docs-resources images (risc-v_logo.png, risc-v_logo.svg, draft.png)
 
 ### Fonts and theme (`docs-resources/`)
@@ -75,7 +75,7 @@ npm install -g wavedrom-cli    # for wavedrom diagram rendering
 make pdf
 ```
 
-Output: `build/Zvame-0.1.pdf`
+Output: `build/Ztt-0.1.pdf`
 
 ### Build metadata
 

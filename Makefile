@@ -1,4 +1,4 @@
-# Makefile for AME (Zvame) Specification PDF
+# Makefile for AME (Ztt) Specification PDF
 #
 # Self-contained build — no UDB, no submodules, no Docker required.
 #
@@ -11,7 +11,7 @@
 #   npm install -g wavedrom-cli
 #   make pdf
 
-EXTENSION := Zvame
+EXTENSION := Ztt
 VERSION := 0.1
 OUTFILE := $(EXTENSION)-$(VERSION).pdf
 

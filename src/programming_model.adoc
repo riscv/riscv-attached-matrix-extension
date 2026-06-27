@@ -613,9 +613,9 @@ value with every element.
 For example, software can implement elementwise add by a common constant using a scalar broadcast
 followed by an elementwise add.
 
-An optional extension, `Zvames`, provides instructions that take scalars as an input for elementwise
+An optional extension, `Ztts`, provides instructions that take scalars as an input for elementwise
 operations.
-With `Zvames`, elementwise add by a common constant is a single instruction.
+With `Ztts`, elementwise add by a common constant is a single instruction.
 
 ===== Scalar broadcast
 

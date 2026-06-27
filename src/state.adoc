@@ -10,7 +10,7 @@ To each hart, AME adds
 * <<udb:doc:param:AME_NUM_ACC_REGS,AME_NUM_ACC_REGS>> datatype registers for the accumulation register(s) (`Ad`)
 
 .AME register state
-image::zvame_regfiles.svg[Register state]
+image::ztt_regfiles.svg[Register state]
 
 [NOTE]
 --
