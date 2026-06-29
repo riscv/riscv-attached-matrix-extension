@@ -12,7 +12,7 @@
 #   make pdf
 
 EXTENSION := Ztt
-VERSION := 0.1
+VERSION := 0.3
 OUTFILE := $(EXTENSION)-$(VERSION).pdf
 
 BUILD_TIME := $(shell date -u '+%Y-%m-%d %H:%M:%S UTC')

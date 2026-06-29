@@ -75,7 +75,7 @@ npm install -g wavedrom-cli    # for wavedrom diagram rendering
 make pdf
 ```
 
-Output: `build/Ztt-0.1.pdf`
+Output: `build/Ztt-0.3.pdf`
 
 ### Build metadata
 

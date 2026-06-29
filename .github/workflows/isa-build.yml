@@ -44,12 +44,12 @@ jobs:
         id: build_files
         run: make pdf
 
-      - name: Upload Zvame PDF
+      - name: Upload Ztt PDF
         if: steps.build_files.outcome == 'success'
         uses: actions/upload-artifact@v7
         with:
-          name: Zvame-0.1-${{ env.SHORT_SHA }}.pdf
-          path: ${{ github.workspace }}/build/Zvame-0.1.pdf
+          name: Ztt-0.3-${{ env.SHORT_SHA }}.pdf
+          path: ${{ github.workspace }}/build/Ztt-0.3.pdf
           retention-days: 7
 
       - name: Create Release
@@ -63,6 +63,6 @@ jobs:
             This release was created by: ${{ github.event.sender.login }}
             Release Notes: ${{ github.event.inputs.release_notes }}
           files: |
-            ${{ github.workspace }}/build/Zvame-0.1.pdf
+            ${{ github.workspace }}/build/Ztt-0.3.pdf
         env:
           GITHUB_TOKEN: ${{ secrets.GHTOKEN }}
