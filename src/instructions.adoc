@@ -181,7 +181,7 @@ Register move / data conversion::
 | Mnemonic | Name
 
 a| `mconv.ew md, ms1`
-| <<udb:doc:inst:mconv_ew,Convert between storage-only and compute datatypes>>
+| <<udb:doc:inst:mconv_ew,Convert between packed and non-packed datatypes>>
 !===
 
 Log2 and Exp2::
@@ -435,8 +435,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::ABS1D, dest_dtype, src1_dtype, 0)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
   U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -530,8 +528,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::ABSDIFF1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -648,8 +644,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::ABSDIFF1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -744,8 +738,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::ADD1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -862,8 +854,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::ADD1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -958,8 +948,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::AND1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -1076,8 +1064,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::AND1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -1174,8 +1160,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::ANDNOT1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -1292,8 +1276,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::ANDNOT1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -1366,8 +1348,8 @@ Description::
 Broadcasts the scalar value from integer register `xs1` to all element positions of
 matrix register `md`.
 +
-The element size is determined by `Md[md]`. For compute datatypes, all `AME_NELEM`
-elements are set to the lower `sizeof(Md[md])` bits of `xs1`. For storage-only datatypes,
+The element size is determined by `Md[md]`. For non-packed datatypes, all `AME_NELEM`
+elements are set to the lower `sizeof(Md[md])` bits of `xs1`. For packed datatypes,
 all `pack_factor * AME_NELEM` elements are set.
 +
 If `Md[md]` is uninitialized (zero), `amestatus.UN` is set and no register is written.
@@ -1400,7 +1382,7 @@ U32 element_size_bits = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_si
 if pass:[(]element_size_bits == 0) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
-  U32 pack_factor = <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dtype) ? (AME_UNIT_DATATYPE_SIZE / element_size_bits) : 1;
+  U32 pack_factor = <<udb:doc:func:ame_dtype_is_packed,ame_dtype_is_packed>>pass:[(]dtype) ? (AME_UNIT_DATATYPE_SIZE / element_size_bits) : 1;
   U32 total_elements = pack_factor * AME_NELEM;
   Bits<AME_MAX_SQUARE_SIZE> result = 0;
   Bits<AME_MAX_DTYPE_SIZE> scalar = X[xs1];
@@ -1470,8 +1452,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MUXGE1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -1591,8 +1571,6 @@ Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MUX1D, dest_dtype, src1_dtype, src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
   U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -1708,8 +1686,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::CMPGE1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -1827,8 +1803,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::CMPGE1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -1930,8 +1904,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::CMPLT1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -2049,8 +2021,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::CMPLT1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -2151,8 +2121,6 @@ Operation::
 Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::COLUNZIP1D, dest_dtype, src1_dtype, src1_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -2262,8 +2230,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::COLZIP1D, dest_dtype, src1_dtype, src1_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
   U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -2324,7 +2290,7 @@ if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperati
 === `mconv.ew`
 
 Synopsis::
-Convert between storage-only and compute datatypes
+Convert between packed and non-packed datatypes
 
 Mnemonic::
 `mconv.ew md, ms1`
@@ -2340,26 +2306,26 @@ Encodings have not been allocated yet. This is just a placeholder.
 ....
 
 Description::
-Converts element data between a storage-only datatype and a compute datatype.
+Converts element data between a packed datatype and a non-packed datatype.
 +
 The source datatype is determined from `Md[ms1]` and the destination datatype from `Md[md]`.
-Exactly one of the two must be a storage-only datatype (size < `AME_UNIT_DATATYPE_SIZE`);
-if both or neither are storage-only, `mconv.1d` sets `amestatus.UN` and returns without
+Exactly one of the two must be a packed datatype (size < `AME_UNIT_DATATYPE_SIZE`);
+if both or neither are packed, `mconv.ew` sets `amestatus.UN` and returns without
 modifying any register.
 +
-**Expand (storage-only → compute):** When `Md[ms1]` is storage-only and `Md[md]` is a
-compute datatype, `ms1` holds `pack_factor = AME_UNIT_DATATYPE_SIZE / sizeof(Md[ms1])`
-packed squares. `mconv.1d` converts each element from the storage datatype to the compute
+**Expand (packed → non-packed):** When `Md[ms1]` is packed and `Md[md]` is a
+non-packed datatype, `ms1` holds `pack_factor = AME_UNIT_DATATYPE_SIZE / sizeof(Md[ms1])`
+packed squares. `mconv.ew` converts each element from the packed datatype to the non-packed
 datatype and writes `pack_factor` result squares to `md`, `md+1`, ..., `md+pack_factor-1`.
 The register index `md` must be a multiple of `pack_factor`; otherwise,
-`mconv.1d` raises an `Illegal Instruction` exception.
+`mconv.ew` raises an `Illegal Instruction` exception.
 +
-**Compress (compute → storage-only):** When `Md[ms1]` is a compute datatype and `Md[md]`
-is storage-only, `ms1`, `ms1+1`, ..., `ms1+pack_factor-1` each hold one compute-dtype square.
-`mconv.1d` converts each element from the compute datatype to the storage datatype and packs
+**Compress (non-packed → packed):** When `Md[ms1]` is a non-packed datatype and `Md[md]`
+is packed, `ms1`, `ms1+1`, ..., `ms1+pack_factor-1` each hold one non-packed square.
+`mconv.ew` converts each element from the non-packed datatype to the packed datatype and packs
 all `pack_factor` result squares into the single register `md`.
 The register index `ms1` must be a multiple of `pack_factor`; otherwise,
-`mconv.1d` raises an `Illegal Instruction` exception.
+`mconv.ew` raises an `Illegal Instruction` exception.
 +
 The specific element-level conversion (e.g., sign extension, truncation, rounding) is
 implementation-defined and discoverable via `amestatus.UN`.
@@ -2381,7 +2347,7 @@ Bits<32> src_dtype = Md[ms1];
 Bits<32> dst_dtype = Md[md];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::CONV1D, dst_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype) == <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dst_dtype)) {
+} else if pass:[(]<<udb:doc:func:ame_dtype_is_packed,ame_dtype_is_packed>>pass:[(]src_dtype) == <<udb:doc:func:ame_dtype_is_packed,ame_dtype_is_packed>>pass:[(]dst_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   if pass:[(]AME_NUM_M_REGS == 16) {
@@ -2389,7 +2355,7 @@ if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperati
       <<udb:doc:func:raise,raise>>pass:[(]ExceptionCode::IllegalInstruction, <<udb:doc:func:mode,mode>>pass:[(]), $encoding);
     }
   }
-  if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
+  if pass:[(]<<udb:doc:func:ame_dtype_is_packed,ame_dtype_is_packed>>pass:[(]src_dtype)) {
     U32 src_element_size_bits = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
     U32 pack_factor = AME_UNIT_DATATYPE_SIZE / src_element_size_bits;
     U32 dst_element_size_bits = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]dst_dtype);
@@ -2488,8 +2454,6 @@ Operation::
 Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::EXP21D, dest_dtype, src1_dtype, src1_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -2591,8 +2555,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::GATHER1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -2751,8 +2713,6 @@ Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::HDIFF1D, dest_dtype, src1_dtype, src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
   U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -2868,8 +2828,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::HDIFF1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -2969,8 +2927,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::LDEXP1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -3093,8 +3049,6 @@ Bits<32> src_dtype = Md[ms2];
 Bits<32> exp_dtype = AME_MAX_INT_DTYPE;
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::LDEXP1D, dest_dtype, src_dtype, exp_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -3197,8 +3151,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::LDEXPACC1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -3325,8 +3277,6 @@ Bits<32> src_dtype = Md[ms2];
 Bits<32> exp_dtype = AME_MAX_INT_DTYPE;
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::LDEXPACC1D, dest_dtype, src_dtype, exp_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -3424,8 +3374,6 @@ Operation::
 Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::LOG21D, dest_dtype, src1_dtype, src1_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -3525,8 +3473,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::LOG2SUB1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -3646,8 +3592,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::LOG2SUB1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -3724,7 +3668,7 @@ The data in memory must have been previously stored in the implementation-define
 register format (e.g., by a matching `ss` instruction). No datatype conversion is
 performed; the in-memory layout is the exact register representation. All elements
 are loaded unconditionally. This instruction is correct for both compute and
-storage-only dtypes without any special handling.
+packed dtypes without any special handling.
 +
 For portable interoperability with other implementations, use
 `<%= link_to_udb_doc_inst("mls.rm") %>` or `<%= link_to_udb_doc_inst("mls.cm") %>`.
@@ -3785,7 +3729,7 @@ Description::
 Loads a square from memory in column-major format into matrix register `md`.
 +
 The datatype is determined from `Md[md]`. For compute datatypes
-(size >= `AME_UNIT_DATATYPE_SIZE`), one square is loaded. For storage-only datatypes
+(size >= `AME_UNIT_DATATYPE_SIZE`), one square is loaded. For packed datatypes
 (size < `AME_UNIT_DATATYPE_SIZE`), `pack_factor = AME_UNIT_DATATYPE_SIZE / sizeof(Md[md])`
 squares are loaded and packed into a single M register.
 +
@@ -3819,7 +3763,7 @@ if pass:[(]AME_NUM_M_REGS == 16) {
 }
 U32 element_size_bits = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]dtype);
 U32 element_size_bytes = element_size_bits >> 3;
-U32 pack_factor = <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dtype) ? (AME_UNIT_DATATYPE_SIZE / element_size_bits) : 1;
+U32 pack_factor = <<udb:doc:func:ame_dtype_is_packed,ame_dtype_is_packed>>pass:[(]dtype) ? (AME_UNIT_DATATYPE_SIZE / element_size_bits) : 1;
 XReg total_bytes = pack_factor * AME_NELEM * element_size_bytes;
 XReg alignment = <<udb:doc:func:min,min>>pass:[(]total_bytes, 4096);
 if pass:[(]address % alignment != 0) {
@@ -3865,7 +3809,7 @@ Description::
 Loads a square from memory in row-major format into matrix register `md`.
 +
 The datatype is determined from `Md[md]`. For compute datatypes
-(size >= `AME_UNIT_DATATYPE_SIZE`), one square is loaded. For storage-only datatypes
+(size >= `AME_UNIT_DATATYPE_SIZE`), one square is loaded. For packed datatypes
 (size < `AME_UNIT_DATATYPE_SIZE`), `pack_factor = AME_UNIT_DATATYPE_SIZE / sizeof(Md[md])`
 squares are loaded and packed into a single M register.
 +
@@ -3899,7 +3843,7 @@ if pass:[(]AME_NUM_M_REGS == 16) {
 }
 U32 element_size_bits = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]dtype);
 U32 element_size_bytes = element_size_bits >> 3;
-U32 pack_factor = <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dtype) ? (AME_UNIT_DATATYPE_SIZE / element_size_bits) : 1;
+U32 pack_factor = <<udb:doc:func:ame_dtype_is_packed,ame_dtype_is_packed>>pass:[(]dtype) ? (AME_UNIT_DATATYPE_SIZE / element_size_bits) : 1;
 XReg total_bytes = pack_factor * AME_NELEM * element_size_bytes;
 XReg alignment = <<udb:doc:func:min,min>>pass:[(]total_bytes, 4096);
 if pass:[(]address % alignment != 0) {
@@ -3968,8 +3912,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MAX1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -4086,8 +4028,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MAX1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -4183,8 +4123,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MEAN1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -4301,8 +4239,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MEAN1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -4398,8 +4334,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MIN1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -4515,8 +4449,6 @@ Operation::
 Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MIN1D, dest_dtype, src_dtype, src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
@@ -4786,8 +4718,6 @@ Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MM1D, dest_dtype, src1_dtype, src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
   U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -4888,8 +4818,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MUL1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -5006,8 +4934,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MUL1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -5110,8 +5036,6 @@ Bits<32> dest_dtype = Ad[acc];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MMACC1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -5221,8 +5145,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MULACC1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -5344,8 +5266,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MULACC1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -5449,8 +5369,6 @@ Bits<32> dest_dtype = Ad[acc];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MMACCNEG1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -5560,8 +5478,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MULNACC1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -5683,8 +5599,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MULNACC1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -5789,8 +5703,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MULADD1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -5912,8 +5824,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MULADD1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -6015,8 +5925,6 @@ Bits<32> dest_dtype = Ad[acc];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MMAT1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -6126,8 +6034,6 @@ Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MMATACC1D, dest_dtype, src1_dtype, src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
   U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -6233,8 +6139,6 @@ Bits<32> dest_dtype = Ad[acc];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MMBT1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -6344,8 +6248,6 @@ Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MMBTACC1D, dest_dtype, src1_dtype, src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
   U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -6452,8 +6354,6 @@ Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MMNEG1D, dest_dtype, src1_dtype, src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
   U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -6558,8 +6458,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::NMUL1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -6676,8 +6574,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::NMUL1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -6781,8 +6677,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MULSUB1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -6905,8 +6799,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::MULSUB1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -7003,8 +6895,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::OR1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -7121,8 +7011,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::OR1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -7219,8 +7107,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::ORNOT1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -7337,8 +7223,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::ORNOT1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -7440,8 +7324,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::PREFIXADDCOL1D, dest_dtype, src1_dtype, src1_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
   U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -7541,8 +7423,6 @@ Operation::
 Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::PREFIXADD1D, dest_dtype, src1_dtype, src1_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -7644,8 +7524,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::PREFIXMAXCOL1D, dest_dtype, src1_dtype, src1_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
   U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -7746,8 +7624,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::PREFIXMAX1D, dest_dtype, src1_dtype, src1_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
   U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -7846,8 +7722,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::RDEXP1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -7963,8 +7837,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::RDEXPACC1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -8082,8 +7954,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::REDUCEADDCOL1D, dest_dtype, src1_dtype, src1_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
   U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -8187,8 +8057,6 @@ Operation::
 Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::REDUCEADD1D, dest_dtype, src1_dtype, src1_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -8294,8 +8162,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::REDUCEMAXCOL1D, dest_dtype, src1_dtype, src1_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
   U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -8399,8 +8265,6 @@ Operation::
 Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::REDUCEMAX1D, dest_dtype, src1_dtype, src1_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -8507,8 +8371,6 @@ Operation::
 Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::ROWUNZIP1D, dest_dtype, src1_dtype, src1_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -8633,8 +8495,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::ROWZIP1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -8770,8 +8630,6 @@ Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::SCATADDCOL1D, dest_dtype, src1_dtype, src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
   U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -8897,8 +8755,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::SCATADD1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -9026,8 +8882,6 @@ Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::SCATMAXCOL1D, dest_dtype, src1_dtype, src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
   U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -9154,8 +9008,6 @@ Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::SCATMAX1D, dest_dtype, src1_dtype, src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
   U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -9276,8 +9128,6 @@ Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::SELGE1D, dest_dtype, src1_dtype, src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
   U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -9393,8 +9243,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::SEL1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -9570,8 +9418,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::SHIFT1D, dest_dtype, src1_dtype, src1_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
   U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -9652,7 +9498,7 @@ register format.
 The data written to memory is in the same implementation-defined format used by the
 matching load instruction (`ls`). No datatype conversion is performed. All elements
 are stored unconditionally. This instruction is correct for both compute and
-storage-only dtypes without any special handling.
+packed dtypes without any special handling.
 +
 For portable interoperability with other implementations, use
 `<%= link_to_udb_doc_inst("mss.rm") %>` or `<%= link_to_udb_doc_inst("mss.cm") %>`.
@@ -9713,7 +9559,7 @@ Description::
 Stores a square from matrix register `ms1` into memory in column-major format.
 +
 The datatype is determined from `Md[ms1]`. For compute datatypes
-(size >= `AME_UNIT_DATATYPE_SIZE`), one square is stored. For storage-only datatypes
+(size >= `AME_UNIT_DATATYPE_SIZE`), one square is stored. For packed datatypes
 (size < `AME_UNIT_DATATYPE_SIZE`), `pack_factor = AME_UNIT_DATATYPE_SIZE / sizeof(Md[ms1])`
 squares are unpacked from the single M register and stored.
 +
@@ -9747,7 +9593,7 @@ if pass:[(]AME_NUM_M_REGS == 16) {
 }
 U32 element_size_bits = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]dtype);
 U32 element_size_bytes = element_size_bits >> 3;
-U32 pack_factor = <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dtype) ? (AME_UNIT_DATATYPE_SIZE / element_size_bits) : 1;
+U32 pack_factor = <<udb:doc:func:ame_dtype_is_packed,ame_dtype_is_packed>>pass:[(]dtype) ? (AME_UNIT_DATATYPE_SIZE / element_size_bits) : 1;
 XReg total_bytes = pack_factor * AME_NELEM * element_size_bytes;
 XReg alignment = <<udb:doc:func:min,min>>pass:[(]total_bytes, 4096);
 if pass:[(]address % alignment != 0) {
@@ -9792,7 +9638,7 @@ Description::
 Stores a square from matrix register `ms1` into memory in row-major format.
 +
 The datatype is determined from `Md[ms1]`. For compute datatypes
-(size >= `AME_UNIT_DATATYPE_SIZE`), one square is stored. For storage-only datatypes
+(size >= `AME_UNIT_DATATYPE_SIZE`), one square is stored. For packed datatypes
 (size < `AME_UNIT_DATATYPE_SIZE`), `pack_factor = AME_UNIT_DATATYPE_SIZE / sizeof(Md[ms1])`
 squares are unpacked from the single M register and stored.
 +
@@ -9826,7 +9672,7 @@ if pass:[(]AME_NUM_M_REGS == 16) {
 }
 U32 element_size_bits = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]dtype);
 U32 element_size_bytes = element_size_bits >> 3;
-U32 pack_factor = <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dtype) ? (AME_UNIT_DATATYPE_SIZE / element_size_bits) : 1;
+U32 pack_factor = <<udb:doc:func:ame_dtype_is_packed,ame_dtype_is_packed>>pass:[(]dtype) ? (AME_UNIT_DATATYPE_SIZE / element_size_bits) : 1;
 XReg total_bytes = pack_factor * AME_NELEM * element_size_bytes;
 XReg alignment = <<udb:doc:func:min,min>>pass:[(]total_bytes, 4096);
 if pass:[(]address % alignment != 0) {
@@ -9893,8 +9739,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::SUB1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -10011,8 +9855,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::SUB1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -10113,8 +9955,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::SUBLOG21D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -10234,8 +10074,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::SUBLOG21D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -10330,8 +10168,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src1_dtype = Md[ms1];
 Bits<32> src2_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::XOR1D, dest_dtype, src1_dtype, src2_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src1_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src2_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src1_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src1_dtype);
@@ -10448,8 +10284,6 @@ Bits<32> dest_dtype = Md[md];
 Bits<32> src_dtype = Md[ms2];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::XOR1D, dest_dtype, src_dtype, src_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype) || <<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]src_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 src_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]src_dtype);
   U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
@@ -10542,8 +10376,6 @@ Operation::
 ----
 Bits<32> dest_dtype = Ad[acc];
 if pass:[(]!<<udb:doc:func:ame_op_supported,ame_op_supported>>pass:[(]AmeOperation::ZERO1D, dest_dtype, dest_dtype, dest_dtype)) {
-  CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
-} else if pass:[(]<<udb:doc:func:ame_dtype_is_storage_only,ame_dtype_is_storage_only>>pass:[(]dest_dtype)) {
   CSR[<<udb:doc:csr:amestatus,amestatus>>].<<udb:doc:csr_field:amestatus:UN,UN>> = 1;
 } else {
   U32 dest_element_size = <<udb:doc:func:ame_dtype_val_to_size,ame_dtype_val_to_size>>pass:[(]dest_dtype);

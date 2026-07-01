@@ -34,16 +34,27 @@ In contrast, an `Acc` register always holds exactly one square.
 
 === Squares
 
-All AME computational instructions operate on fixed-sized NxN square matrices.
+The *pack_factor* of a datatype is the number of squares contained in a single M register:
+
+* **Packed** (`sizeof(dtype) < AME_UNIT_DATATYPE_SIZE`): `pack_factor = AME_UNIT_DATATYPE_SIZE / sizeof(dtype)`
+* **Unit or Wide** (`sizeof(dtype) >= AME_UNIT_DATATYPE_SIZE`): `pack_factor = 1`
+
+When the programmed datatype is a *packed datatype*
+(size < `<<udb:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>>`),
+a single M register holds `pack_factor` logical squares.
+
+The number of elements processed by an AME matrix multiply instruction depends on the datatype.
+For non-packed datatypes (`pack_factor = 1`), the operands are `N x N` squares.
+For packed datatypes (`pack_factor > 1`), the input operands span `N x (pack_factor * N)` and `(pack_factor * N) x N`
+elements respectively, while the accumulator output remains `N x N`.
 
 [NOTE]
 --
-This constraint keeps the ISA and hardware simple: every compute instruction consumes and produces
-the same logical shape (`N x N`), so instruction encoding does not need per-operand shape fields,
-register mapping is uniform, and implementations can use fixed datapaths and scheduling.
+This constraint keeps the ISA simple: instruction encoding does not need per-operand shape fields
+and register mapping is uniform. The accumulator operand always holds exactly one `N x N` square.
 
 For contrast, general matrix multiply on non-square inputs (`M x K` by `K x N`) produces `M x N`.
-AME handles this by tiling into `N x N` squares and zero-padding boundary tiles in software.
+AME handles this by tiling into squares and zero-padding boundary tiles in software.
 
 .Example (`N = 8`)
 * Multiply `A(3x5)` by `B(5x2)`.
@@ -96,14 +107,8 @@ Specifying a register index that is not a multiple of the group size results in 
 Illegal Instruction exception.
 This mechanism is analogous to the `LMUL` facility used in the RISC-V vector (`V`) extension.
 
-When the programmed datatype is a *storage-only datatype*
-(size < `<<udb:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>>`),
-multiple logical squares are packed into a single M register.
-The number of squares per register is the *pack factor*:
-`pack_factor = AME_UNIT_DATATYPE_SIZE / sizeof(dtype)`.
-Storage-only registers cannot be used as operands in compute instructions;
-`<<udb:doc:inst:mconv_ew,mconv.ew>>` must first expand the data into
-compute-dtype registers before computation.
+Packed datatypes can be used directly as operands in compute instructions;
+see <<operand-formation>> for how multi-operand instructions determine register spans.
 
 .Square-to-M-register mapping examples
 image::ame-square-reg-mapping.svg[Square to M register mapping examples]
@@ -122,6 +127,44 @@ madd.1d m2, m2, m2  # well-defined, m2 = m2 + m2
 madd.1d m2, m3, m3  # undefined
 madd.1d m3, m2, m2  # undefined
 ----
+
+[[operand-formation]]
+==== Operand formation
+
+When a compute instruction references multiple tensor operands, all operands must contain
+the same total number of squares.
+The instruction's square count is `N_sq = max(pack_factor)` across all tensor operands.
+
+Each operand's register span is then sized to hold exactly `N_sq` squares:
+
+* **Packed operand** (`pack_factor > 1`): `N_sq / pack_factor` registers
+* **Unit or Wide operand** (`pack_factor = 1`): `N_sq x ceil(sizeof(dtype) / AME_UNIT_DATATYPE_SIZE)` registers
+
+
+Consider an ADD instruction with three tensor operands of different datatypes:
+
+.Operand formation example (`AME_UNIT_DATATYPE_SIZE` = 8 bits)
+[cols="1,1,1,1,1",options="header"]
+|===
+| Operand | Dtype | pack_factor | Register Span | Total Squares
+
+| Tsrc0 | Int4  | 2 | N_sq / 2 = 1 register  | 2
+| Tsrc1 | Int8  | 1 | N_sq x 1 = 2 registers | 2
+| Tdst  | Int16 | 1 | N_sq x 2 = 4 registers | 2
+|===
+
+`N_sq = max(2, 1, 1) = 2` (set by the Int4 operand with `pack_factor = 2`).
+All three operands contain `N_sq x AME_NELEM = 2 x AME_NELEM` elements total.
+
+Accumulator (`Acc`) operands are not subject to this rule:
+they always hold exactly one square regardless of datatype.
+
+This rule applies uniformly to both 1D (element-wise) and 2D (matrix multiply) instructions.
+For 1D instructions, each operand processes `N_sq` squares element-wise — a packed
+operand's `pack_factor` squares are stored contiguously in a single register, while a
+non-packed operand's `N_sq` squares span `N_sq` registers.
+For 2D matrix multiply instructions, the inner product dimension extends to
+`pack_factor * N` elements; see <<_2_dimensional_matrix_multiply_operations>>.
 
 === Polymorphic instructions
 
@@ -160,14 +203,6 @@ Profiles will likely mandate a minimal set of supported datatypes.
 
 Datatypes are set using the <<udb:doc:inst:msettyp,msettyp>> instruction and
 read using the <<udb:doc:inst:mgettyp,mgettyp>> instruction.
-
-==== Compute and storage datatypes
-
-For a given implementation, datatypes can be partitioned into *compute* datatypes and *storage*
-datatypes. Compute datatypes are those that can be used with AME 1D and/or 2D computation instructions.
-Storage datatypes are those that can _only_ be used as the destination or source of a load or store.
-Any datatype whose size is less than <<udb:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>> _must_ be a storage datatype.
-Storage datatypes are useful to handle packed datatype formats; see <<mapping-squares-to-m-registers>> for more details.
 
 === Data movement
 
@@ -230,14 +265,17 @@ AME does not support general masking/predication on computational instructions, 
 
 ==== 2-dimensional matrix multiply operations
 
-Full N^3^ matrix multiplication of squares is a primitive operation of AME, performed using a single instruction.
+AME matrix multiplication instructions calculate the matrix product `C = A x B`.
 
-AME matrix multiplication instructions calculate the matrix product, `C` of two squares, `A` and `B`.
+For *non-packed datatypes* (`pack_factor = 1`), A and B are each a single `N x N` square.
+For *packed datatypes* (`pack_factor > 1`), A is an `N x (pack_factor * N)` matrix (pack_factor squares laid side-by-side
+in the column dimension) and B is an `(pack_factor * N) x N` matrix (pack_factor squares stacked in the row
+dimension). The accumulator output C is always `N x N` regardless of `pack_factor`.
 
 Each output element `C[i,j]` is computed as the dot product of:
 
-* row `i` of `A`, and
-* column `j` of `B`.
+* row `i` of `A` (length `pack_factor * N`), and
+* column `j` of `B` (length `pack_factor * N`).
 
 The accumulation order for additions inside each dot product is implementation-defined.
 That order is fixed within a given implementation, so repeated runs on the same implementation
@@ -254,9 +292,13 @@ Formally:
 --
 def perm(range): implementation-defined permutation over range
 
+# K = N     for non-packed datatypes (pack_factor = 1)
+# K = pack_factor*N  for packed datatypes     (pack_factor > 1)
+K = pack_factor * N
+
 for i from 0 to N-1:
   for j from 0 to N-1:
-    C[i,j] = sum(A[i,k] * B[k,j] for k in perm(0..N-1))
+    C[i,j] = sum(A[i,k] * B[k,j] for k in perm(0..K-1))
 --
 
 Matrix multiplication is not commutative (`A*B != B*A` in general),
@@ -603,8 +645,8 @@ typically used to initialize an accumulator before a matrix multiply sequence.
 |===
 
 `<<udb:doc:inst:mconv_ew,mconv.ew>>` converts element data from one datatype to another.
-An expand converts a single packed `M` register (storage-only dtype) into `pack_factor` consecutive
-compute-dtype `M` registers; a compress does the reverse.
+An expand converts a single packed `M` register (packed dtype) into `pack_factor` consecutive
+non-packed `M` registers; a compress does the reverse.
 
 ==== Scalars
 
@@ -621,7 +663,7 @@ With `Ztts`, elementwise add by a common constant is a single instruction.
 
 AME provides two instructions to fill every element of an M register with a single scalar value,
 analogous to `np.full_like`. The element size is determined by the register's programmed datatype.
-Both compute and storage-only dtypes are supported; for storage-only dtypes all
+Both non-packed and packed dtypes are supported; for packed dtypes all
 `pack_factor * AME_NELEM` element positions are filled.
 
 `<<udb:doc:inst:mbcast_x,mbcast.x>>` sources the scalar from an integer (`X`) register.
@@ -653,50 +695,29 @@ or is pre-determined (for example, a constant exponent operand is always an XLEN
 ==== Load and store
 
 The row-major and column-major interoperability instructions (`mls.rm`, `mls.cm`, `mss.rm`, `mss.cm`)
-support both compute and storage-only datatypes. Data is always transferred as a single
+support both non-packed and packed datatypes. Data is always transferred as a single
 contiguous block — no striding, partial-tile, or predicated variants exist.
 
-For *compute datatypes* (size >= `AME_UNIT_DATATYPE_SIZE`), one square is transferred
+For *non-packed datatypes* (size >= `AME_UNIT_DATATYPE_SIZE`), one square is transferred
 between memory and one (or more, for wide types) M registers.
 
-For *storage datatypes* (size < `AME_UNIT_DATATYPE_SIZE`), `pack_factor` squares are
+For *packed datatypes* (size < `AME_UNIT_DATATYPE_SIZE`), `pack_factor` squares are
 transferred in a single instruction:
 
-* **Load:** `pack_factor` squares are loaded from contiguous memory and packed into a single
-  M register. In row-major format, sub-square `sq` occupies the `sq`-th block of
-  `sqrt(AME_NELEM)` rows in memory. In column-major format, sub-square `sq` occupies the
-  `sq`-th block of `sqrt(AME_NELEM)` columns.
+* **Load:** `pack_factor` squares are loaded from contiguous memory and packed into a
+  single M register. Each sub-square contains `AME_NELEM` elements.
+  In row-major format, the load accesses `sqrt(AME_NELEM)` rows and
+  `pack_factor * sqrt(AME_NELEM)` columns in memory, where sub-square `sq` occupies columns
+  `sq * sqrt(AME_NELEM)` to `(sq+1) * sqrt(AME_NELEM) - 1`.
+  In column-major format, the load accesses `pack_factor * sqrt(AME_NELEM)` rows and
+  `sqrt(AME_NELEM)` columns in memory, where sub-square `sq` occupies rows
+  `sq * sqrt(AME_NELEM)` to `(sq+1) * sqrt(AME_NELEM) - 1`.
 
 * **Store:** The single packed M register is unpacked and `pack_factor` squares are written
   to contiguous memory using the same layout.
 
-The typical workflow for storage-only data is:
-
-// not really bash, but it gets us colored # comments
-[source,bash]
-----
-  # Load INT4 data (pack_factor = AME_UNIT_DATATYPE_SIZE / 4 squares per register)
-  li t0, INT4_DTYPE
-  msettyp m0, t0
-  mls.rm m0, a0                  # loads pack_factor INT4 squares into m0
-
-  # Expand INT4 → INT16 before compute
-  li t0, INT16_DTYPE
-  msettyp m4, t0                # m4, m5, ... will hold the expanded squares
-  mconv.ew m4, m0               # expands m0 into m4..m(4+pack_factor-1)
-
-  # Compute using m4..m(4+pack_factor-1) as normal INT16 registers
-  madd.1d m8, m4, m4
-
-  # Optionally compress back to INT4 for storage
-  li t0, INT4_DTYPE
-  msettyp m0, t0
-  mconv.ew m0, m8               # compresses m8..m(8+pack_factor-1) → m0
-  mss.rm m0, a3                  # stores pack_factor INT4 squares from m0
-----
-
 The opaque-format instructions (`mls`, `mss`) transfer the raw M register contents without
-interpreting the datatype and are correct for both compute and storage-only dtypes.
+interpreting the datatype and are correct for both non-packed and packed dtypes.
 
 AME includes a mix of precise and imprecise exceptions.
 When exceptions can occur, the precision is indicated. QQQ – more needed.

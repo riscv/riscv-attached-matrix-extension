@@ -60,10 +60,10 @@
 
 
   <!-- ═══════════════════════════════════════════
-       CASE 3: PACKED STORAGE-ONLY
+       CASE 3: PACKED
        ═══════════════════════════════════════════ -->
 
-  <text x="698" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e1e1e">Storage-only (packed)</text>
+  <text x="698" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e1e1e">Packed</text>
 
   <!-- Register M[i] — two packed sub-squares side by side -->
   <text x="593" y="62" text-anchor="end" font-size="11" fill="#1e1e1e">M[i]</text>
