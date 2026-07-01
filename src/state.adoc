@@ -136,9 +136,9 @@ This is analogous to reading `vlenb` in RISC-V Vector code.
 | Field | Location | Description
 
 | VALUE
-| `* 31:0 when CSR[mstatus].UXL == 0
-* 63:0 when CSR[mstatus].UXL == 1
-`
+a|
+* `31:0` when `CSR[mstatus].UXL == 0`
+* `63:0` when `CSR[mstatus].UXL == 1`
 | Tile side length (N)
 
 |===
@@ -168,9 +168,9 @@ without hardcoding any implementation-specific constant.
 | Field | Location | Description
 
 | VALUE
-| `* 31:0 when CSR[mstatus].UXL == 0
-* 63:0 when CSR[mstatus].UXL == 1
-`
+a|
+* `31:0` when `CSR[mstatus].UXL == 0`
+* `63:0` when `CSR[mstatus].UXL == 1`
 | Unit datatype size (AME_UNIT_DATATYPE_SIZE) in bits
 
 |===

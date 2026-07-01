@@ -163,32 +163,35 @@ The rounding mode of an operation is determined by the datatype of the destinati
 
 
 
-=== Storage-only datatypes
+=== Packed datatypes
 
 A datatype whose size (bits 7:0) is greater than zero and less than
-`<<udb:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>>` is called a *storage-only datatype*.
-Storage-only datatypes are used to pack data efficiently in memory and in M registers,
-but they cannot be used directly as operands in compute instructions.
+`<<udb:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>>` is called a *packed datatype*.
 
-When an M register is programmed with a storage-only datatype, it holds data *packed*:
-a single register contains `pack_factor = AME_UNIT_DATATYPE_SIZE / sizeof(dtype)` logical
-squares. For example, with `AME_UNIT_DATATYPE_SIZE` = 16 bits and an 8-bit storage type,
-`pack_factor` = 2: one M register holds two squares of 8-bit elements.
+The *Pack Factor* (`pack_factor`) of a datatype is the number of squares stored per M register:
 
-Attempting to use a storage-only M register as an operand in a compute instruction
-(any 1D or 2D operation) results in `amestatus.UN` being set and the instruction returning
-without writing any output register. This is the discovery mechanism for storage-only support:
-software can probe which storage-only datatypes an implementation supports by attempting
-`mconv.ew` and inspecting `amestatus.UN`.
+* For packed datatypes: `pack_factor = AME_UNIT_DATATYPE_SIZE / sizeof(dtype)` (>= 2; equals the pack factor)
+* For all other datatypes: `pack_factor = 1`
 
-To use data loaded from a storage-only register, software must first convert it to a
-compute datatype (size >= `AME_UNIT_DATATYPE_SIZE`) using the
-`<<udb:doc:inst:mconv_ew,mconv.ew>>` instruction, which expands one packed storage-only
-M register into `pack_factor` compute-dtype M registers.
+For example, with `AME_UNIT_DATATYPE_SIZE` = 8 bits and an Int4 (4-bit) datatype,
+`pack_factor` = 2: one M register holds two Int4 squares.
 
-Standard storage-only datatypes include Int4 and Uint4 (when `AME_UNIT_DATATYPE_SIZE` > 4),
+Packed datatypes can be used directly as operands in compute instructions.
+When an instruction has multiple tensor operands, each operand must contain the same total
+number of squares: `N_sq = max(pack_factor)` across all tensor operands.
+Each operand's register span is sized to hold exactly `N_sq` squares.
+Accumulator operands are not subject to this rule — they always hold exactly one square.
+
+See <<operand-formation>> in the programming model for the complete rules and a worked example.
+
+If a packed datatype/operation combination is not supported by an implementation,
+`amestatus.UN` is set and the instruction returns without writing any output register.
+Software can probe compute support by attempting a compute instruction and
+inspecting `amestatus.UN`.
+
+Standard packed datatypes include Int4 and Uint4 (when `AME_UNIT_DATATYPE_SIZE` > 4),
 and Int8/Uint8 (when `AME_UNIT_DATATYPE_SIZE` > 8).
-Whether any given storage-only type is supported is implementation-defined.
+Whether any given packed type is supported is implementation-defined.
 
 === Discovery
 

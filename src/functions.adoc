@@ -35,12 +35,12 @@ h| Arguments   l| AmeOperation op, Bits<8> dest_dtype, Bits<8> src1_dtype, Bits<
 return true;
 ----
 
-[#udb:doc:func:ame_dtype_is_storage_only]
-=== `ame_dtype_is_storage_only`
-Returns true if dtype_val is a storage-only datatype: its size in bits (bits 7:0) is
+[#udb:doc:func:ame_dtype_is_packed]
+=== `ame_dtype_is_packed`
+Returns true if dtype_val is a packed datatype: its size in bits (bits 7:0) is
 greater than zero and less than AME_UNIT_DATATYPE_SIZE.
-Storage-only datatypes are packed in M registers (pack_factor = AME_UNIT_DATATYPE_SIZE / size
-squares per register) and cannot be used as operands in compute instructions.
+Packed datatypes store pack_factor = AME_UNIT_DATATYPE_SIZE / size
+squares per register and can be used directly as operands in compute instructions.
 
 
 |===

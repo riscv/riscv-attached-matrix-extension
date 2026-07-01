@@ -26,9 +26,8 @@ For a given compute datatype with element size `dtype_bits`,
 The A-square group starts at `m0`; the B-square group starts at `m{group_size}`.
 All examples are restricted to `M 0–15` and `Acc0`, so group_size is at most 8.
 
-Storage-only datatypes (element size < `AME_UNIT_DATATYPE_SIZE`) cannot be used
-directly in compute instructions — they require `mconv.ew` expansion first — and
-are not covered in these examples.
+Packed datatypes (element size < `AME_UNIT_DATATYPE_SIZE`) can be used directly in
+compute instructions. These examples focus on non-packed datatypes for simplicity.
 
 The figure below illustrates the tiling for `M=K=P=4N`, showing a snapshot
 at `i_tile=1`, `k_tile=1`, `j_tile=2`.
@@ -230,7 +229,7 @@ Matrices are pre-formatted in the implementation-defined square layout, so `mls`
 Memory strides use `square_bytes = AME_NELEM × elem_bytes = 16384 × elem_bytes`.
 +
 `dtype` varies at runtime: `group_size = dtype_bits >> 3` (since `U = 8`).
-Storage-only datatypes (`dtype_bits < 8`) are rejected at entry.
+Packed datatypes (`dtype_bits < 8`) use `pack_factor > 1` and are handled separately.
 The triple loop is instantiated once per supported group_size via a macro.
 
 Algorithm::
@@ -244,9 +243,12 @@ int N          = 128;                    // t0: sqrt(16384)
 int dtype_bits = dtype & 0xFF;           // t2: element size in bits
 int elem_bytes = dtype_bits / 8;         // t3
 
-if (dtype_bits < 8) return;              // guard: reject storage-only datatypes
-
-int group_size    = dtype_bits / 8;      // t2: repurposed (U = 8 hardcoded)
+int group_size;
+if (dtype_bits < 8) {                   // packed datatype
+  group_size = 1;                        // pack_factor squares per register
+} else {
+  group_size = dtype_bits / 8;           // t2: repurposed (U = 8 hardcoded)
+}
 // A-sq group: m0…m[group_size-1]
 // B-sq group: m[group_size]…m[2*group_size-1]
 
@@ -312,14 +314,23 @@ gemm_square:
     andi   t2, a6, 0xFF           # t2 = dtype_bits
     srli   t3, t2, 3              # t3 = elem_bytes = dtype_bits / 8
 
-    # ── step 3: guard — reject storage-only datatypes ──────────────
+    # ── step 3: handle packed datatypes ────────────────────────────
     li     t1, 8
-    bltu   t2, t1, .done          # dtype_bits < 8 → unsupported
+    bltu   t2, t1, .packed_path    # dtype_bits < 8 → packed datatype
 
     # ── step 4: compute group_size ──────────────────────────────────
     # group_size = dtype_bits / U = dtype_bits / 8 (U = 8 is hardcoded)
     srli   t2, t2, 3              # t2 = group_size
+    j      .configure
 
+.packed_path:
+    # Packed datatypes use group_size = 1.
+    # elem_bytes for sub-byte types: use pack_factor to compute stride.
+    # pack_factor = U / dtype_bits; effective square_bytes = N * N * U / 8
+    li     t2, 1                   # t2 = group_size = 1
+    li     t3, 1                   # t3 = elem_bytes = U / 8 = 1 (stride unit)
+
+.configure:
     # ── step 5: configure datatypes ─────────────────────────────────
     msettyp m0, a6                # A-square group starts at m0
     msettyp acc0, a6
@@ -465,9 +476,12 @@ int U          = read_csr(ameudsz);    // t1: AME_UNIT_DATATYPE_SIZE in bits
 int dtype_bits = dtype & 0xFF;         // t2: element size in bits
 int elem_bytes = dtype_bits / 8;       // t3
 
-if (dtype_bits < U) return;            // guard: reject storage-only datatypes
-
-int group_size    = dtype_bits / U;    // t2: repurposed
+int group_size;
+if (dtype_bits < U) {                 // packed datatype
+  group_size = 1;
+} else {
+  group_size = dtype_bits / U;         // t2: repurposed
+}
 // A-tile group: m0…m[group_size-1]
 // B-tile group: m[group_size]…m[2*group_size-1]
 
@@ -534,10 +548,10 @@ gemm_portable:
     andi   t2, a6, 0xFF          # t2 = dtype_bits
     srli   t3, t2, 3             # t3 = elem_bytes = dtype_bits / 8
 
-    # ── step 3: guard — reject storage-only datatypes ──────────
-    # Storage-only types (dtype_bits < U) cannot be operands in compute
-    # instructions; they require mconv.ew expansion before use.
-    bltu   t2, t1, .done         # dtype_bits < U → unsupported
+    # ── step 3: handle packed datatypes ──────────────────────────
+    # Packed types (dtype_bits < U) use pack_factor squares per register.
+    # group_size is 1 for packed types.
+    bltu   t2, t1, .packed_port    # dtype_bits < U → packed datatype
 
     # ── step 4: compute group_size ─────────────────────────────
     # group_size = dtype_bits / U  (both are powers of 2)
@@ -545,7 +559,15 @@ gemm_portable:
     # group_size == 2 → two M registers per tile (dtype_bits == 2U)
     # etc.
     divu   t2, t2, t1            # t2 = group_size  (t1 = U now free)
+    j      .configure_port
 
+.packed_port:
+    # Packed datatypes use group_size = 1.
+    # elem_bytes for sub-byte types: use U/8 as the stride unit.
+    li     t2, 1                  # t2 = group_size = 1
+    srli   t3, t1, 3             # t3 = U / 8 (stride unit for packed)
+
+.configure_port:
     # ── step 5: configure datatypes ────────────────────────────
     msettyp m0, a6               # A-tile group starts at m0
     msettyp acc0, a6
