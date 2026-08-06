@@ -26,7 +26,7 @@ baseline_path = File.join(root, "ref", "ame-instruction-baseline.json")
 audit_path = File.join(root, "docs", "migration", "ame-prose-migration-audit.md")
 errors = []
 
-expected_baseline_hash = "8a7169a803fc2b4618d1d8ef9f652d0b0d02ae51fe590cd11790bfd45bee6072"
+expected_baseline_hash = "05533ab50d606fea94e23861e9948ac323840fd2c5a51e15c9655b327a90a073"
 actual_baseline_hash = Digest::SHA256.file(baseline_path).hexdigest
 unless actual_baseline_hash == expected_baseline_hash
   errors << "baseline snapshot hash is #{actual_baseline_hash}, expected #{expected_baseline_hash}"

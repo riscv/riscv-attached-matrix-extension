@@ -11,7 +11,7 @@ without an ordering fence (see <<ame-consistency-model>>).
 
 [[ame-state-enablement]]
 [[ame-common-state-access]]
-==== AME state enablement
+==== AME state enablement and ownership
 
 AME adds a two-bit matrix context status field, `MS[1:0]`, to `mstatus`.
 It is shadowed in `sstatus` and follows the `VS[1:0]` state model.
@@ -23,97 +23,143 @@ It is shadowed in `sstatus` and follows the `VS[1:0]` state model.
 
 |`0`
 |Off
-|AME state is disabled.
+|AME disabled; no resource ownership.
 
 |`1`
 |Initial
-|AME state is enabled and initial.
+|AME enabled; state is initial.
 
 |`2`
 |Clean
-|AME state is enabled and matches its saved image.
+|AME enabled; state matches its saved image.
 
 |`3`
 |Dirty
-|AME state is enabled and might differ from its saved image.
+|AME enabled; state might differ from its saved image.
 |===
 
-Initial, Clean, and Dirty enable AME state. An AME operation that might modify
-that state changes each applicable Initial or Clean field to Dirty unless the
-operation specifies another result. An implementation may set Dirty
-conservatively. Dirty sets the corresponding `SD` bit.
+Off indicates no ownership; each non-Off encoding enables AME and indicates
+ownership. An operation that might modify AME state sets every applicable
+Initial or Clean field to Dirty unless otherwise specified. An implementation
+may set Dirty conservatively; Dirty sets the corresponding `SD` bit.
 
-Privileged software may set `MS` to Clean after saving AME state. Writing `MS`
-does not modify AME state. `MS` resets to Off; a hart without AME may make it
-read-only zero.
+Writes between non-Off encodings affect only status, not AME state. Software
+may write Clean after saving or restoring state and Initial only for
+architectural initial state. An implementation may set Dirty instead. `MS`
+resets to Off; a hart without AME may make it read-only zero.
 
-When the hypervisor extension is present, `vsstatus` contains an `MS[1:0]`
-field. When `V=1`, both `mstatus.MS` and `vsstatus.MS` are applicable. AME is
-enabled only when every applicable field is non-Off, and state changes update
-every applicable field. A Dirty `vsstatus.MS` sets `vsstatus.SD`.
+With the hypervisor extension, `vsstatus` contains `MS[1:0]`. When `V=1`, both
+`mstatus.MS` and `vsstatus.MS` apply; effective `MS` is non-Off only if both are
+non-Off. An AME state change sets both to Dirty. Dirty `vsstatus.MS` sets
+`vsstatus.SD`.
+
+`ame.acquire` requests ownership and `ame.release` relinquishes it; see
+<<ame-backend-management-operators>>.
+
+[[ame-user-ownership-enable]]
+===== Supervisor AME configuration (`samecfg`)
+
+`samecfg` is an SXLEN-bit supervisor read/write CSR controlling U/VU-mode
+execution of `ame.acquire` and `ame.release`.
+
+[cols="1,1,3",options="header"]
+|===
+|Field |Location |Meaning
+
+|UOE
+|`0`
+|WARL bit permitting U/VU-mode execution of `ame.acquire` and `ame.release`
+
+|WPRI
+|`SXLEN-1:1`
+|Reserved
+|===
+
+`UOE` affects only U/VU-mode: zero makes either instruction raise an
+illegal-instruction exception before other checks; one permits execution. It
+resets to zero and is read-only zero without U-mode. `samecfg` is absent without
+AME or S-mode.
+
+`samecfg` belongs to the supervisor context and governs U at `V=0` or VU at
+`V=1`.
 
 [[shared-ame-backend]]
-==== Shared AME backend
+===== AME resources and ownership
 
-An AME backend contains the execution resources and architectural context
-state. It may be shared by multiple harts. Base AME exposes the entire backend
-as one indivisible ownership unit, held by at most one software execution
-context.
+AME execution and state resources may be dedicated to a hart or shared among
+harts. Sharing can improve utilization and reduce area and power. AME does not
+prescribe the physical topology.
+
+Ownership associates a software execution context with the AME resources and
+state available to it. Platforms supporting OS-managed ownership shall provide
+system software with hart-to-resource connectivity and capacity information.
 
 [[ame-backend-ownership]]
-===== Ownership and access rules
+====== Access rules
 
-The read-only `ameown.OWNED` field reports whether the current context owns the
-backend. `ame.acquire` requests ownership and `ame.release` relinquishes it;
-<<ame-backend-management-operators>> defines their semantics.
+The current context owns AME resources exactly when effective `MS` is non-Off.
+When it is Off, every AME instruction except `ame.acquire` and `ame.release`,
+and every AME state or capability CSR access, raises an illegal-instruction
+exception. This includes `amenlen` and `ameudsz`. The two ownership instructions
+remain subject to <<ame-user-ownership-enable>>; `MS` and `samecfg` retain their
+normal privilege rules. These exceptions precede other AME checks and change
+no AME state.
 
-If any applicable `MS` field is Off:
+[[ame-backend-ms-transitions]]
+====== Privileged `MS` writes
 
-* Every AME instruction raises an illegal-instruction exception, including
-  `ame.acquire` and `ame.release`.
-* Every read or write of every AME CSR raises an illegal-instruction exception,
-  including a read of `ameown`.
+A privileged `MS` write has the following resource effect:
 
-If every applicable `MS` field is non-Off but `ameown.OWNED=0`:
+[cols="2,2,5",options="header"]
+|===
+|Before |After |Result
 
-* Every AME instruction other than `ame.acquire` and `ame.release` raises an
-  illegal-instruction exception.
-* Every access to a writable AME context CSR raises an illegal-instruction
-  exception.
-* Read-only capability CSRs and `ameown` may be read.
+|Off
+|Off
+|No resource effect
 
-These exceptions precede all other AME validation and change no AME state.
+|Off
+|Non-Off
+|Acquire compatible AME resources in architectural initial state. If none are
+available, raise an illegal-instruction exception and make no change
 
-If `ameown.OWNED=1`, a CSR instruction that attempts to set any applicable
-`MS` field to Off raises an illegal-instruction exception and changes no state.
-No implicit release occurs; software must execute `ame.release` first.
+|Non-Off
+|Non-Off
+|Preserve ownership and AME state; update only the addressed field
 
-[[ame-backend-ms]]
-===== Interaction with `MS`
+|Non-Off
+|Off
+|Complete the release ordering in <<ame-backend-management-operators>>, release
+the resources, and set every applicable `MS` field to Off
+|===
 
-A newly granted backend is bound to the current context in architectural
-initial state, with `ameown.OWNED=1` and each applicable `MS` field Initial.
-Reacquiring an already-owned backend preserves its state and `MS`. Releasing
-an owned backend clears `OWNED` and sets each applicable `MS` field to Initial.
-`MS` alone does not grant ownership.
+An Off-to-non-Off transition is a non-waiting privileged acquisition with no
+descriptor or result value. Before triggering it, the OS shall reserve a
+compatible free AME state resource against competing acquisition, using the
+platform's connectivity and capacity information. Acquisition supplies
+architectural initial state; the written status does not restore a saved image.
+All non-Off encodings are legal, and software is responsible for keeping the
+status consistent with the state.
 
 [[ame-backend-context-switch]]
-===== OS context switch
+====== OS context switch
 
-Software saves `ameown.OWNED` with the execution context. Before switching out
-an owner, it saves required AME state and releases the backend.
+On switch-out, the OS saves Dirty AME state, then releases the resources with
+`ame.release` or an `MS` write that makes effective `MS` Off. The saved context
+retains its AME image, not ownership.
 
-To restore a saved owner, software enables `MS`, executes `ame.acquire`, and
-waits for success. It then restores any saved AME state and sets `MS` to Clean,
-or retains the initial state and Initial status established by acquisition.
-AME execution resumes only after acquisition succeeds and any required restore
-completes.
+On switch-in, the OS acquires resources with `ame.acquire` or an Off-to-non-Off
+`MS` transition before accessing AME state. It then restores any saved image
+and writes `MS` Clean, or keeps the acquired initial state and writes `MS`
+Initial.
+
+<<<
 
 === State
 
-An acquired AME backend binds its AME registers and writable context CSRs to
-the current software execution context. AME instructions access that state and
-control data transfer between AME registers and memory.
+When effective `MS` is non-Off, the context's AME registers and writable CSRs
+are active. AME instructions access that state and transfer data between AME
+registers and memory.
 
 .Register state and data movement paths for AME. The F/D and V extensions are _optional_ with AME. The only architectural datapath between vector (if present) and AME is through memory. The scalar datapath(s) is/are one-way. AME accumulator state can only be moved to/from the AME matrix registers.
 image::ame_state.svg[AME state and architectural datapaths]
@@ -750,7 +796,7 @@ between AME state and non-AME state (X, F, or V registers via memory) in hot loo
 
 AME supports several broad classes of operations:
 
-*  Backend management
+*  Resource ownership management
 *  2D Matrix multiply
 *  1D Element-wise/vector
 *  Intra-tensor (reduction/expansion/permutation)
@@ -762,13 +808,12 @@ AME supports several broad classes of operations:
 AME does not support general masking/predication on computational instructions, though a future extension may add support.
 
 [[ame-backend-management-operators]]
-==== Backend management
+==== Resource ownership management
 
 ===== `ame.acquire`
 
-`ame.acquire xd, xs` atomically requests the entire backend. Every applicable
-`MS` field must be non-Off; otherwise, the instruction raises an
-illegal-instruction exception.
+`ame.acquire xd, xs` atomically requests AME resource ownership and may execute
+while effective `MS` is Off. In U/VU-mode, `samecfg.UOE` must be one.
 
 `xs` contains the acquisition descriptor:
 
@@ -826,12 +871,12 @@ other values are reserved. TRY ignores `TIMEOUT_CLASS`.
 |`0x01`
 |BUSY
 |0
-|Backend unavailable
+|Required AME resources unavailable
 
 |`0x02`
 |UNSUPPORTED
 |0
-|No accessible AME backend
+|No accessible AME resources
 
 |`0x03`
 |DISABLED
@@ -870,23 +915,19 @@ other values are reserved. TRY ignores `TIMEOUT_CLASS`.
 |===
 
 An invalid descriptor returns BAD_DESC, and disabled configuration returns
-DISABLED. A request from the current owner returns GRANTED without changing
-the bound state or `MS`. A new grant atomically binds architectural initial
-state, sets `ameown.OWNED` to one, and sets each applicable `MS` field to
+DISABLED. If effective `MS` is already non-Off, the instruction returns GRANTED
+without changing AME state or `MS`. A new grant associates architectural
+initial state with the current context and sets every applicable `MS` field to
 Initial. Initial state has zero-valued `M` and `Acc` registers, zero-valued
 `Md` and `Ad` descriptors, and reset-valued writable AME CSRs. Failure changes
-neither backend binding, `ameown`, nor `MS`.
+neither ownership nor `MS`.
 
 ===== `ame.release`
 
-`ame.release` requires every applicable `MS` field to be non-Off. If the
-current context owns the backend, it stops accepting new operations, drains
-retired operations and earlier state-save stores, unbinds the state, and
-atomically releases ownership.
-
-After release, `ameown.OWNED` is zero and each applicable `MS` field is
-Initial. If the current context is not the owner, the instruction is a no-op
-that preserves `MS`.
+In U/VU-mode, `samecfg.UOE` must be one. If effective `MS` is non-Off,
+`ame.release` completes previously retired AME operations and earlier
+state-save stores, then atomically releases the resources and sets every
+applicable `MS` field to Off. If effective `MS` is Off, it is a no-op.
 
 
 

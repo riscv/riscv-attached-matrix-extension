@@ -38,9 +38,9 @@ Resource Management::
 | Mnemonic | Name
 
 a| `ame.acquire xd, xs`
-| <<ame:doc:inst:ame_acquire,Acquire the AME backend>>
+| <<ame:doc:inst:ame_acquire,Acquire AME resource ownership>>
 a| `ame.release`
-| <<ame:doc:inst:ame_release,Release the AME backend>>
+| <<ame:doc:inst:ame_release,Release AME resource ownership>>
 !===
 
 
@@ -405,7 +405,7 @@ a| `mreducemin.row md, ms1`
 === `ame.acquire`
 
 Synopsis::
-Acquire the entire AME backend
+Acquire AME resource ownership
 
 Mnemonic::
 `ame.acquire xd, xs`
@@ -421,13 +421,13 @@ This encoding is provisional and is not a final RISC-V allocation.
 ....
 
 Description::
-Requests the entire AME backend; see <<ame-backend-management-operators>>.
+Requests AME resource ownership; see <<ame-backend-management-operators>>.
 
 Operation::
 +
 [source]
 ----
-X[xd] = acquire_backend(descriptor = X[xs])
+X[xd] = acquire_ame_resources(descriptor = X[xs])
 ----
 +
 This operation uses the common rules in <<ame-common-state-access>>.
@@ -438,7 +438,7 @@ This operation uses the common rules in <<ame-common-state-access>>.
 === `ame.release`
 
 Synopsis::
-Release the entire AME backend
+Release AME resource ownership
 
 Mnemonic::
 `ame.release`
@@ -454,13 +454,13 @@ This encoding is provisional and is not a final RISC-V allocation.
 ....
 
 Description::
-Releases the entire AME backend; see <<ame-backend-management-operators>>.
+Releases AME resource ownership; see <<ame-backend-management-operators>>.
 
 Operation::
 +
 [source]
 ----
-release the backend held by this hart
+release the AME resources associated with the current context
 ----
 +
 This operation uses the common rules in <<ame-common-state-access>>.

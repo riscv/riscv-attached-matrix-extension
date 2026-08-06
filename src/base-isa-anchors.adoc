@@ -22,10 +22,6 @@ amestatus::
 ameudsz::
   See the RISC-V Privileged Specification for details on the `ameudsz` CSR.
 
-[#ame:doc:csr:ameown]
-ameown::
-  See <<_ameown>> for details on the `ameown` CSR.
-
 [#ame:doc:csr:ame_scalar_dtype]
 ame_scalar_dtype::
   See the RISC-V Privileged Specification for details on the `ame_scalar_dtype` CSR.
@@ -126,6 +122,10 @@ scause::
 sepc::
   See the RISC-V Privileged Specification for details on the `sepc` CSR.
 
+[#ame:doc:csr:samecfg]
+samecfg::
+  See <<ame-user-ownership-enable>> for details on the `samecfg` CSR.
+
 [#ame:doc:csr:sstatus]
 sstatus::
   See the RISC-V Privileged Specification for details on the `sstatus` CSR.
@@ -188,13 +188,13 @@ amefflags.NX::
 amestatus.UN::
   See the RISC-V Privileged Specification for details on the `amestatus.UN` field.
 
-[#ame:doc:csr_field:ameown:OWNED]
-ameown.OWNED::
-  See <<_ameown>> for details on the `ameown.OWNED` field.
-
 [#ame:doc:csr_field:amexsat:SAT]
 amexsat.SAT::
   See the AME state chapter for details on the `amexsat.SAT` field.
+
+[#ame:doc:csr_field:samecfg:UOE]
+samecfg.UOE::
+  See <<ame-user-ownership-enable>> for details on the `samecfg.UOE` field.
 
 [#ame:doc:csr_field:henvcfg:ADUE]
 henvcfg.ADUE::

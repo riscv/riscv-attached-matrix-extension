@@ -6,20 +6,21 @@ Accumulator Register File (ARF)::
   The ARF registers hold the accumulator operand of matrix multiply instructions.
 
 AME backend::
-  The AME execution resources and architectural context state managed as one
-  ownership unit.
+  The implementation resources used to execute AME instructions and hold AME
+  state. A backend may be dedicated to a hart or shared among harts.
 
-backend ownership::
-  The exclusive binding between an AME backend and a software execution
-  context, reported by `ameown.OWNED`.
+AME resource ownership::
+  The architectural association between a software execution context and the
+  AME resources and state made available to it.
 
 effective `MS`::
   The collective enablement state of every `MS` field applicable to the current
-  execution context. AME is enabled only when none is Off.
+  execution context. It is Off if any applicable field is Off and enabled
+  otherwise.
 
 software execution context::
-  The schedulable software state to which AME backend ownership and AME
-  architectural context state are bound.
+  The schedulable software state associated with AME resource ownership and
+  architectural state.
 
 square::
   A 2-dimensional tensor (matrix) with an equal number of rows and columns.

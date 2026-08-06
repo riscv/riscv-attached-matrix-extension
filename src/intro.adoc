@@ -11,9 +11,9 @@ Isolated::
 *  AME is designed to work well on tensor codes regardless of whether the host hart implements RISC-V Vector (RVV). Implementing RVV is not a prerequisite of AME. Frequently moving state between RVV and AME may degrade performance on some implementations.
 
 Detachable::
-*  AME allows harts to share an AME backend and provides explicit ownership
-   management; see <<shared-ame-backend>>. Implementations may instead provide
-   dedicated backends.
+*  AME resources may be dedicated to a hart or shared among harts. Sharing can
+   improve utilization and reduce area and power. Ownership is independent of
+   the physical resource topology; see <<shared-ame-backend>>.
 
 
 === Specification status
@@ -25,10 +25,6 @@ The following architectural questions remain open:
 * A formal definition of the ordering relationship between AME and non-AME
   memory operations. The current requirements are described in
   <<ame-consistency-model>>.
-* Whether AME requires additional machine- or hypervisor-level environment
-  configuration controls beyond the state-enablement rules in
-  <<ame-state-enablement,AME state enablement>>.
-
 Prefix and reduction instructions do not support widening
 source-to-destination datatype tuples in the current architecture. Their
 source and destination datatypes must be identical, as specified in

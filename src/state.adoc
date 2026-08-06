@@ -104,7 +104,8 @@ The encoding format of `Ad` datatypes is identical to the format for `Md`, and i
 
 === Control and status registers (CSRs)
 
-AME adds seven CSRs.
+AME defines six user-level state and capability CSRs. The supervisor CSR
+`samecfg` is defined separately in <<ame-user-ownership-enable>>.
 
 The addresses below are provisional allocations in the corresponding
 user-level custom read/write and read-only CSR ranges.  A future ratified
@@ -125,10 +126,6 @@ version may assign different standard CSR addresses.
 | `CC2`
 | Datatype of data scalar operands supplied in `X` registers
 
-| <<ame:doc:csr:ameown,ameown>>
-| `CC3`
-| Ownership of the AME backend
-
 | <<ame:doc:csr:amefflags,amefflags>>
 | `CC4`
 | Accrued AME floating-point exception flags
@@ -143,34 +140,9 @@ version may assign different standard CSR addresses.
 
 |===
 
-`ame_scalar_dtype` and `amestatus` are backend context state. `amenlen` and
-`ameudsz` report implementation capabilities. `ameown` reports ownership.
-
-==== ameown
-
-`ameown` is a read-only CSR that reports whether the current software execution
-context owns the entire AME backend. It may be read when every applicable `MS`
-field is non-Off, regardless of ownership. Any CSR instruction that attempts
-to write `ameown` raises an illegal-instruction exception.
-
-|===
-| Field | Location | Description
-
-| OWNED
-| `0`
-| One when the current context owns the backend; zero otherwise
-
-| RESERVED
-| `XLEN-1:1`
-| Reads as zero
-
-|===
-
-`ameown.OWNED` is set when `ame.acquire` newly grants ownership and cleared by
-`ame.release`. A failed acquire does not change it. It resets to zero.
-Software saves `ameown.OWNED` with the execution context. To restore a saved
-value of one, software executes `ame.acquire`; a successful acquisition
-restores `ameown.OWNED` to one.
+`ame_scalar_dtype` and `amestatus` are AME context state; `amenlen` and
+`ameudsz` report implementation capabilities. Address `CC3` remains
+unallocated. Effective `MS` indicates ownership; see <<ame-backend-ownership>>.
 
 ==== ame_scalar_dtype
 
@@ -186,7 +158,7 @@ This CSR does not apply to fixed-type control operands.  Shift amounts,
 indices, offsets, and other instruction-defined control values retain their
 fixed integer semantics and do not read this CSR.
 
-The CSR resets to zero. It is backend context state and must be saved and
+The CSR resets to zero. It is AME context state and must be saved and
 restored with the AME state when software changes execution context.
 
 |===
@@ -206,8 +178,8 @@ The value is a design-time constant equal to the square root of
 `AME_NELEM`.
 Because `AME_NELEM` is always a power of 4, N is always a power of 2.
 
-Software reads this CSR once at function entry to obtain N, then uses
-N to derive all tile loop bounds and memory strides without hardcoding any
+When effective `MS` is non-Off, software may read this CSR to obtain N and
+derive tile loop bounds and memory strides without hardcoding
 implementation-specific constants.
 This is analogous to reading `vlenb` in RISC-V Vector code.
 
@@ -226,9 +198,9 @@ This is analogous to reading `vlenb` in RISC-V Vector code.
 Holds `AME_UNIT_DATATYPE_SIZE`, the element size in bits at which exactly one
 square fits in a single M register.
 
-The value is a design-time constant.  Software reads this CSR together with
-a datatype encoding to compute the *group size*: the number of consecutive M
-registers required to hold one square:
+The value is a design-time constant. When effective `MS` is non-Off, software
+may read this CSR with a datatype encoding to compute the *group size*: the
+number of consecutive M registers required to hold one square:
 
   group_size = max(1, ceil(dtype_size_bits / AME_UNIT_DATATYPE_SIZE))
 
@@ -237,9 +209,7 @@ Packed datatypes use one M register and therefore have `group_size = 1`.
 When `group_size > 1`, the register index used with any instruction must be a
 multiple of `group_size`.
 
-This CSR is analogous to `vlenb` in RISC-V Vector code: software reads it
-once at function entry to derive all register-grouping and stride calculations
-without hardcoding any implementation-specific constant.
+This CSR is analogous to `vlenb` in RISC-V Vector code.
 
 
 |===
@@ -263,9 +233,9 @@ atomically with the instruction's destination writes; an instruction that
 raises a synchronous exception does not update `amefflags`.  Reserved bits are
 WPRI and read as zero.
 
-The CSR resets to zero.  It is hart state and must be saved and restored with
-the AME state when software changes execution context.  AME operations do not
-modify the `fflags` CSR of the F extension.
+The CSR resets to zero.  It is AME context state and must be saved and restored
+with the AME state when software changes execution context.  AME operations do
+not modify the `fflags` CSR of the F extension.
 
 |===
 | Field | Location | Description
@@ -305,8 +275,8 @@ atomically with the instruction's destination writes; an instruction that
 raises a synchronous exception does not update `amexsat`.  Reserved bits are
 WPRI and read as zero.
 
-The CSR resets to zero.  It is hart state and must be saved and restored with
-the AME state when software changes execution context.
+The CSR resets to zero.  It is AME context state and must be saved and restored
+with the AME state when software changes execution context.
 
 |===
 | Field | Location | Description
@@ -320,7 +290,7 @@ clamps its output to the destination datatype's range.
 
 ==== amestatus
 
-`amestatus` is backend context state and reports sticky AME execution status.
+`amestatus` is AME context state and reports sticky AME execution status.
 It resets to zero. Software
 clears a reported condition by writing zero to the corresponding bit; writing
 one leaves that bit set.  Reserved bits are WPRI and read as zero.

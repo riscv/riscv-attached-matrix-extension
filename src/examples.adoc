@@ -21,9 +21,8 @@
 These examples implement the GEMM accumulation `C [M×P] += A [M×K] × B [K×P]`.
 AME partitions each matrix into N×N squares, where `N = sqrt(AME_NELEM)`.
 
-The examples assume that the caller has enabled `MS` and successfully acquired
-the backend. The caller releases the backend after the AME state is no longer
-needed.
+The examples assume that the caller owns AME resources and releases them after
+the AME state is no longer needed.
 
 For a given compute datatype with element size `dtype_bits`,
 `group_size = dtype_bits / AME_UNIT_DATATYPE_SIZE` consecutive M registers hold one square.
