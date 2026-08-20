@@ -214,25 +214,13 @@ Register move / data conversion::
 | Mnemonic | Name
 
 a| `mbcast.m.x md, rs1, rs2`
-| <<ame:doc:inst:mbcast_m_x,Typed scalar ingress and broadcast to M>>
-a| `mconv.ew md, ms1`
-| <<ame:doc:inst:mconv_ew,Convert element data between supported datatypes, including packed and non-packed representations>>
-a| `mmove8.m.x md, rs2, rs1`
-| <<ame:doc:inst:mmove8_m_x,Move one 8-bit scalar into an M register position (debug)>>
-a| `mmove16.m.x md, rs2, rs1`
-| <<ame:doc:inst:mmove16_m_x,Move one 16-bit scalar into an M register position (debug)>>
-a| `mmove32.m.x md, rs2, rs1`
-| <<ame:doc:inst:mmove32_m_x,Move one 32-bit scalar into an M register position (debug)>>
-a| `mmove64.m.x md, rs2, rs1`
-| <<ame:doc:inst:mmove64_m_x,Move one 64-bit scalar into an M register position (debug)>>
-a| `mmove8.x.m rd, ms2, rs1`
-| <<ame:doc:inst:mmove8_x_m,Move one 8-bit element from an M register position to an X register (debug)>>
-a| `mmove16.x.m rd, ms2, rs1`
-| <<ame:doc:inst:mmove16_x_m,Move one 16-bit element from an M register position to an X register (debug)>>
-a| `mmove32.x.m rd, ms2, rs1`
-| <<ame:doc:inst:mmove32_x_m,Move one 32-bit element from an M register position to an X register (debug)>>
-a| `mmove64.x.m rd, ms2, rs1`
-| <<ame:doc:inst:mmove64_x_m,Move one 64-bit element from an M register position to an X register (debug)>>
+| <<ame:doc:inst:mbcast_m_x,Explicitly typed scalar ingress and broadcast to M>>
+a| `mcvt.ew md, ms1`
+| <<ame:doc:inst:mcvt_ew,Convert element data between supported datatypes, including packed and non-packed representations>>
+a| `mmove.m.x md, rs1, rs2`
+| <<ame:doc:inst:mmove_m_x,Move one scalar into a square element position (debug)>>
+a| `mmove.x.m rd, ms1, rs2`
+| <<ame:doc:inst:mmove_x_m,Move one square element to an X register (debug)>>
 a| `mpack.ew.x md, rs1, ms2`
 | <<ame:doc:inst:mpack_ew_x,Pack one square into a slot of a packed M register>>
 a| `munpack.ew.x md, rs1, ms2`
@@ -249,13 +237,13 @@ a| `mcos.ew md, ms1`
 a| `mexp2.ew md, ms1`
 | <<ame:doc:inst:mexp2_ew,Elementwise base-2 exponentiation>>
 a| `mldexp.ew md, ms1, ms2`
-| <<ame:doc:inst:mldexp_ew,Elementwise left-shift scale (ldexp)>>
+| <<ame:doc:inst:mldexp_ew,Elementwise power-of-two scale (ldexp)>>
 a| `mldexp.ew.x md, rs1, ms2`
-| <<ame:doc:inst:mldexp_ew_x,Elementwise scalar left-shift scale (ldexp)>>
+| <<ame:doc:inst:mldexp_ew_x,Elementwise scalar power-of-two scale (ldexp)>>
 a| `mldexpacc.ew md, ms1, ms2`
-| <<ame:doc:inst:mldexpacc_ew,Elementwise left-shift scale accumulate>>
+| <<ame:doc:inst:mldexpacc_ew,Elementwise power-of-two scale accumulate>>
 a| `mldexpacc.ew.x md, rs1, ms2`
-| <<ame:doc:inst:mldexpacc_ew_x,Elementwise scalar left-shift scale accumulate>>
+| <<ame:doc:inst:mldexpacc_ew_x,Elementwise scalar power-of-two scale accumulate>>
 a| `mlog2.ew md, ms1`
 | <<ame:doc:inst:mlog2_ew,Elementwise base-2 logarithm>>
 a| `mlog2sub.ew md, ms1, ms2`
@@ -263,9 +251,9 @@ a| `mlog2sub.ew md, ms1, ms2`
 a| `mlog2sub.ew.x md, rs1, ms2`
 | <<ame:doc:inst:mlog2sub_ew_x,Elementwise log2 minus scalar bias>>
 a| `mrdexp.ew md, ms1, ms2`
-| <<ame:doc:inst:mrdexp_ew,Elementwise right-shift scale>>
+| <<ame:doc:inst:mrdexp_ew,Elementwise negative-power-of-two scale>>
 a| `mrdexpacc.ew md, ms1, ms2`
-| <<ame:doc:inst:mrdexpacc_ew,Elementwise right-shift scale accumulate>>
+| <<ame:doc:inst:mrdexpacc_ew,Elementwise negative-power-of-two scale accumulate>>
 a| `mrec.ew md, ms1`
 | <<ame:doc:inst:mrec_ew,Elementwise reciprocal>>
 a| `mrsqrt.ew md, ms1`
@@ -382,7 +370,7 @@ a| `mreducemin.row md, ms1`
 === `ame.acquire`
 
 Synopsis::
-Acquire the entire AME backend
+Acquire the AME backend
 
 Mnemonic::
 `ame.acquire rd, rs1`
@@ -412,7 +400,7 @@ This operation uses the common rules in <<ame-common-state-access>>.
 === `ame.release`
 
 Synopsis::
-Release the entire AME backend
+Release the AME backend
 
 Mnemonic::
 `ame.release`
@@ -708,10 +696,10 @@ Description::
 Computes the elementwise bitwise AND of a scalar constant from integer register `rs1`
 with every element of square `ms2` and stores the result in `md`.
 +
-For standard datatypes, `Md[ms2]` and `Md[md]` shall be the same integer
-datatype, and the converted scalar and matrix elements are operated on as raw
-bits.  An accepted custom tuple shall define its operand widths, raw-bit
-operation, and destination representation.
+For standard datatypes, `CSR[amestype]`, `Md[ms2]`, and `Md[md]` shall specify
+the same integer datatype, and the scalar and matrix elements are operated on
+as raw bits.  An accepted custom tuple shall define its operand widths,
+raw-bit operation, and destination representation.
 
 Operation::
 +
@@ -780,10 +768,10 @@ Computes the elementwise bitwise AND of a scalar constant from integer register 
 with the bitwise complement of every element of square `ms2` and stores the result in
 `md`.
 +
-For standard datatypes, `Md[ms2]` and `Md[md]` shall be the same integer
-datatype, and the converted scalar and matrix elements are operated on as raw
-bits.  An accepted custom tuple shall define its operand widths, raw-bit
-operation, and destination representation.
+For standard datatypes, `CSR[amestype]`, `Md[ms2]`, and `Md[md]` shall specify
+the same integer datatype, and the scalar and matrix elements are operated on
+as raw bits.  An accepted custom tuple shall define its operand widths,
+raw-bit operation, and destination representation.
 
 Operation::
 +
@@ -821,7 +809,7 @@ element is written to `md`; otherwise the pre-instruction `md` element is
 preserved bit-for-bit.
 +
 The predicate datatype `Md[ms1]` shall define the ordered comparison used by
-the `Operation`, and `Md[ms2]` and `Md[md]` shall be identical.  A tuple that
+the `Operation`, and `Md[ms2]` and `Md[md]` shall specify the same datatype.  A tuple that
 violates either requirement is unsupported under
 <<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>.
 An accepted custom tuple shall define the selected-value representation.
@@ -862,7 +850,7 @@ written to `md`; otherwise the pre-instruction `md` element is preserved
 bit-for-bit.
 +
 The predicate datatype `Md[ms1]` shall define the ordered comparison used by
-the `Operation`, and `Md[ms2]` and `Md[md]` shall be identical.  A tuple that
+the `Operation`, and `Md[ms2]` and `Md[md]` shall specify the same datatype.  A tuple that
 violates either requirement is unsupported under
 <<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>.
 An accepted custom tuple shall define the selected-value representation.
@@ -1046,17 +1034,20 @@ Description::
 Broadcasts column `c` (from integer register `rs1`) of `ms2` to every column of
 `md`, independently for every row.
 +
-If `c` is outside `[0, sqrt(AME_NELEM))`, an `Illegal Instruction` exception is raised.
+`CSR[amestype]` shall be an integer datatype able to represent every value in
+`[0, sqrt(AME_NELEM))`, under which the `rs1` operand is interpreted to give the
+column index; otherwise the tuple is unsupported and `amestatus.UN` is set.
 +
-The `rs1` operand is a fixed-type control scalar: its low 32 bits are interpreted as an
-unsigned integer column index.  It does not read `CSR[amestype]` and does not undergo
-AME datatype conversion.
+If `c` is outside `[0, sqrt(AME_NELEM))`, an `Illegal Instruction` exception is
+raised.  Because `c` derives from datatype state rather than an encoded field,
+this definition places that check after the datatype tuple check of
+<<ame-common-operand-validation,the operand-validation order>>.
 +
 `md` and `ms2` each contain exactly one logical square.  Packed datatypes are
 unsupported and are handled according to
 <<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>.
 +
-`Md[ms2]` and `Md[md]` shall be identical; a mismatch is an unsupported
+`Md[ms2]` and `Md[md]` shall specify the same datatype; a mismatch is an unsupported
 datatype tuple.
 
 Operation::
@@ -1065,6 +1056,8 @@ Operation::
 ----
 D[i,j] = A[i,c]
 ----
++
+This operation uses the common rules in <<ame-common-scalar-operands>>.
 
 <<<
 
@@ -1089,7 +1082,7 @@ Elementwise column gather: for each element in each row, uses the corresponding 
 to select a column from the same row of `ms1`, and stores the result into `md`.
 +
 `md`, `ms1`, and `ms2` each contain exactly one logical square.  Packed
-datatypes are unsupported.  `Md[ms1]` and `Md[md]` shall be identical, and
+datatypes are unsupported.  `Md[ms1]` and `Md[md]` shall specify the same datatype, and
 `Md[ms2]` shall be an integer datatype.  A tuple that violates any of these
 requirements is handled according to
 <<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>.
@@ -1165,9 +1158,10 @@ Encoding::
 
 Description::
 Performs an elementwise column shift of `ms2` by offset `c` and stores the result
-in `md`.  The offset is obtained by interpreting the low 32 bits of integer
-register `rs1` as a signed two's-complement integer.  This fixed-type control
-scalar does not read `CSR[amestype]`.
+in `md`.  `CSR[amestype]` shall be a signed integer datatype able to represent
+every offset in `(-sqrt(AME_NELEM), sqrt(AME_NELEM))`, under which the `rs1`
+operand is interpreted to give the offset; otherwise the tuple is unsupported
+and `amestatus.UN` is set.
 +
 Elements shifted beyond the column boundary are filled with zero (no wrap-around).
 +
@@ -1175,7 +1169,7 @@ Elements shifted beyond the column boundary are filled with zero (no wrap-around
 unsupported and are handled according to
 <<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>.
 +
-`Md[ms2]` and `Md[md]` shall be identical; a mismatch is an unsupported
+`Md[ms2]` and `Md[md]` shall specify the same datatype; a mismatch is an unsupported
 datatype tuple.
 
 Operation::
@@ -1184,6 +1178,8 @@ Operation::
 ----
 D[i,j] = (0 <= j+c < sqrt(AME_NELEM)) ? A[i,j+c] : zero(Md[md])
 ----
++
+This operation uses the common rules in <<ame-common-scalar-operands>>.
 
 <<<
 
@@ -1226,7 +1222,8 @@ element is copied bit-for-bit in that common datatype representation.  This
 preserves floating-point NaN payloads and signed zeros, and all custom-datatype
 representations.
 +
-Packed datatypes are unsupported and are handled according to
+`Md[ms1]` and `Md[ms2]` shall be non-packed datatypes; a packed tensor
+descriptor makes the tuple unsupported under
 <<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>.
 +
 Inverse of `mcolzip.ew`.
@@ -1281,7 +1278,8 @@ element is copied bit-for-bit in that common datatype representation.  This
 preserves floating-point NaN payloads and signed zeros, and all custom-datatype
 representations.
 +
-Packed datatypes are unsupported and are handled according to
+`Md[ms1]` and `Md[ms2]` shall be non-packed datatypes; a packed tensor
+descriptor makes the tuple unsupported under
 <<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>.
 +
 Inverse of `mcolunzip.ew`.
@@ -1298,14 +1296,14 @@ ms2[i,2j+1] = B[i,N/2+j]
 
 <<<
 
-[#ame:doc:inst:mconv_ew]
-=== `mconv.ew`
+[#ame:doc:inst:mcvt_ew]
+=== `mcvt.ew`
 
 Synopsis::
 Convert element data between supported datatypes, including packed and non-packed representations
 
 Mnemonic::
-`mconv.ew md, ms1`
+`mcvt.ew md, ms1`
 
 Encoding::
 +
@@ -1323,7 +1321,7 @@ particular packedness combination is required.  Both operands are formed by the 
 operand-formation rules, so the instruction's square count is `N_sq = max(pack_factor)`
 and every operand spans exactly `N_sq` squares.
 +
-`mconv.ew` converts each element of the formed logical source operand from the source
+`mcvt.ew` converts each element of the formed logical source operand from the source
 datatype to the destination datatype and writes the result squares to the formed logical
 destination operand.  A packed source with a non-packed destination therefore expands
 the source squares; a non-packed source with a packed destination compresses them; and
@@ -1347,7 +1345,7 @@ This operation uses the common rules in <<ame-common-register-groups>>.
 === `mbcast.m.x`
 
 Synopsis::
-Convert an X-register scalar and broadcast it to an M operand
+Explicitly typed scalar ingress and broadcast to M
 
 Mnemonic::
 `mbcast.m.x md, rs1, rs2`
@@ -1694,7 +1692,7 @@ This operation uses the common rules in <<ame-common-arithmetic>> and <<ame-comm
 === `mldexp.ew`
 
 Synopsis::
-Elementwise left-shift scale (ldexp)
+Elementwise power-of-two scale (ldexp)
 
 Mnemonic::
 `mldexp.ew md, ms1, ms2`
@@ -1731,7 +1729,7 @@ This operation uses the common rules in <<ame-common-arithmetic>>.
 === `mldexp.ew.x`
 
 Synopsis::
-Elementwise scalar left-shift scale (ldexp)
+Elementwise scalar power-of-two scale (ldexp)
 
 Mnemonic::
 `mldexp.ew.x md, rs1, ms2`
@@ -1744,14 +1742,11 @@ Encoding::
 ....
 
 Description::
-Scales every element of square `ms2` by a power of two. The integer exponent
-comes from integer register `rs1`, and the result is stored in `md`.
+Elementwise scale of `ms2` by a power of two given by integer register `rs1`,
+stored into `md`.
 +
-The type of the matrix elements is determined by `Md[ms2]`. `X[rs1]` is
-zero-extended or low-bit truncated to the width of
-<<ame:doc:param:AME_MAX_INT_DTYPE,AME_MAX_INT_DTYPE>> and then interpreted using
-that integer datatype.  The exponent is a fixed-type control scalar and does
-not read `CSR[amestype]`.
+For a standard tuple, `CSR[amestype]` shall specify an integer datatype.  An
+accepted custom tuple shall define the scalar as an integral exponent.
 +
 For standard floating-point data operands, a signed zero or signed infinity
 preserves its sign.  The exact scaled result is rounded once on conversion to
@@ -1764,7 +1759,8 @@ Operation::
 D[i] = B[i] × pow2(c)
 ----
 +
-This operation uses the common rules in <<ame-common-arithmetic>>.
+This operation uses the common rules in <<ame-common-arithmetic>> and
+<<ame-common-scalar-operands>>.
 
 <<<
 
@@ -1772,7 +1768,7 @@ This operation uses the common rules in <<ame-common-arithmetic>>.
 === `mldexpacc.ew`
 
 Synopsis::
-Elementwise left-shift scale accumulate
+Elementwise power-of-two scale accumulate
 
 Mnemonic::
 `mldexpacc.ew md, ms1, ms2`
@@ -1785,7 +1781,7 @@ Encoding::
 ....
 
 Description::
-Elementwise left-shift scale of `ms1` by a power of two given by `ms2`, accumulated into `md`.
+Elementwise scale of `ms1` by a power of two given by `ms2`, accumulated into `md`.
 +
 `md` is both a source and destination: the existing element is read, the scaled value
 is added, and the sum is written back.
@@ -1810,7 +1806,7 @@ This operation uses the common rules in <<ame-common-arithmetic>>.
 === `mldexpacc.ew.x`
 
 Synopsis::
-Elementwise scalar left-shift scale accumulate
+Elementwise scalar power-of-two scale accumulate
 
 Mnemonic::
 `mldexpacc.ew.x md, rs1, ms2`
@@ -1823,17 +1819,14 @@ Encoding::
 ....
 
 Description::
-Scales every element of square `ms2` by a power of two using the integer exponent
-from integer register `rs1`, then accumulates the scaled result into `md`.
+Elementwise scale of `ms2` by a power of two given by integer
+register `rs1`, accumulated into `md`.
 +
 `md` is both a source and destination: the existing element is read, the scaled value
 is added, and the sum is written back.
 +
-The type of the matrix elements is determined by `Md[ms2]`. `X[rs1]` is
-zero-extended or low-bit truncated to the width of
-<<ame:doc:param:AME_MAX_INT_DTYPE,AME_MAX_INT_DTYPE>> and then interpreted using
-that integer datatype.  The exponent is a fixed-type control scalar and does
-not read `CSR[amestype]`.
+For a standard tuple, `CSR[amestype]` shall specify an integer datatype.  An
+accepted custom tuple shall define the scalar as an integral exponent.
 +
 The complete expression is evaluated without an intermediate conversion to
 `Md[md]` and is converted to `Md[md]` once.
@@ -1845,7 +1838,8 @@ Operation::
 D[i] = D[i] + B[i] × pow2(c)
 ----
 +
-This operation uses the common rules in <<ame-common-arithmetic>>.
+This operation uses the common rules in <<ame-common-arithmetic>> and
+<<ame-common-scalar-operands>>.
 
 <<<
 
@@ -2142,7 +2136,7 @@ Encoding::
 Description::
 Elementwise maximum of the tensors in `ms1` and `ms2`, stored into `md`.
 +
-`Md[ms1]`, `Md[ms2]`, and `Md[md]` shall be identical.  The common descriptor
+`Md[ms1]`, `Md[ms2]`, and `Md[md]` shall specify the same datatype.  The common descriptor
 shall be a standard numeric datatype or a custom datatype that defines the
 ordering required by this operation; otherwise the tuple is unsupported under
 <<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>.
@@ -2181,12 +2175,11 @@ Description::
 Computes the elementwise maximum of a scalar constant from integer register `rs1`
 and every element of square `ms2`, and stores the result in `md`.
 +
-`Md[ms2]` and `Md[md]` shall be identical.  The common tensor descriptor shall
-be a standard numeric datatype or a custom datatype that defines the ordering
-required by this operation; otherwise the tuple is unsupported under
+`CSR[amestype]`, `Md[ms2]`, and `Md[md]` shall specify the same datatype.  The common
+descriptor shall be a standard numeric datatype or a custom datatype that
+defines the ordering required by this operation; otherwise the tuple is
+unsupported under
 <<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>.
-The scalar datatype need not match and follows
-<<ame-common-scalar-operands,the common scalar-ingress rules>>.
 +
 For standard floating-point operands other than NaN, the instruction selects an
 operand exactly; a `-0`/`+0` tie selects `+0`.
@@ -2282,7 +2275,7 @@ Encoding::
 Description::
 Elementwise minimum of the tensors in `ms1` and `ms2`, stored into `md`.
 +
-`Md[ms1]`, `Md[ms2]`, and `Md[md]` shall be identical.  The common descriptor
+`Md[ms1]`, `Md[ms2]`, and `Md[md]` shall specify the same datatype.  The common descriptor
 shall be a standard numeric datatype or a custom datatype that defines the
 ordering required by this operation; otherwise the tuple is unsupported under
 <<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>.
@@ -2321,12 +2314,11 @@ Description::
 Computes the elementwise minimum of a scalar constant from integer register `rs1`
 and every element of square `ms2`, and stores the result in `md`.
 +
-`Md[ms2]` and `Md[md]` shall be identical.  The common tensor descriptor shall
-be a standard numeric datatype or a custom datatype that defines the ordering
-required by this operation; otherwise the tuple is unsupported under
+`CSR[amestype]`, `Md[ms2]`, and `Md[md]` shall specify the same datatype.  The common
+descriptor shall be a standard numeric datatype or a custom datatype that
+defines the ordering required by this operation; otherwise the tuple is
+unsupported under
 <<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>.
-The scalar datatype need not match and follows
-<<ame-common-scalar-operands,the common scalar-ingress rules>>.
 +
 For standard floating-point operands other than NaN, the instruction selects an
 operand exactly; a `-0`/`+0` tie selects `-0`.
@@ -2375,19 +2367,15 @@ For packed datatypes
 `N x N` square, and all `pack_factor` squares are packed into the single M
 register `md`.  If `pack_factor` exceeds
 <<ame:doc:param:AME_NUM_ACC_REGS,AME_NUM_ACC_REGS>>, `amestatus.UN` is set and
-`md` is left unchanged.  Otherwise, every derived accumulator index in
-`acc .. acc + pack_factor - 1` is checked before any accumulator data is read
-or `md` is written; an index greater than or equal to `AME_NUM_ACC_REGS` raises
-an `Illegal Instruction` exception, and a failing check cannot cause a partial
-transfer.
+`md` is left unchanged.  The derived accumulator span
+`acc .. acc + pack_factor - 1` is validated under
+<<ame-common-operand-validation,the operand-validation order>>.
 +
 The destination `md` must satisfy the alignment constraint for its datatype:
 `md` must be a multiple of the number of M registers consumed by one element.
 +
 The operand datatypes are taken only from the base registers `Ad[acc]` and
-`Md[md]`.  As with any register group, the `Md` and `Ad` values of the
-remaining registers in either group are ignored, and this instruction does
-not modify any `Md` or `Ad` register.
+`Md[md]`, and this instruction does not modify any `Md` or `Ad` register.
 
 Operation::
 +
@@ -2434,16 +2422,12 @@ register `ms` holds `pack_factor` `N x N` squares.  Each square is copied to
 a consecutive accumulator starting at `acc`, so the instruction writes the
 `pack_factor` accumulators `acc`, `acc+1`, ..., `acc + pack_factor - 1`.  If
 `pack_factor` exceeds <<ame:doc:param:AME_NUM_ACC_REGS,AME_NUM_ACC_REGS>>,
-`amestatus.UN` is set and no accumulator is written.  Otherwise, every
-derived index in that complete accumulator span is checked before any source
-data is read or accumulator is written; an index greater than or equal to
-`AME_NUM_ACC_REGS` raises an `Illegal Instruction` exception, and a failing
-check cannot cause a partial transfer.
+`amestatus.UN` is set and no accumulator is written.  The derived accumulator
+span is validated under
+<<ame-common-operand-validation,the operand-validation order>>.
 +
 The operand datatypes are taken only from the base registers `Md[ms]` and
-`Ad[acc]`.  As with any register group, the `Md` and `Ad` values of the
-remaining registers in either group are ignored, and this instruction does
-not modify any `Md` or `Ad` register.
+`Ad[acc]`, and this instruction does not modify any `Md` or `Ad` register.
 
 Operation::
 +
@@ -2489,418 +2473,98 @@ This operation uses the common rules in <<ame-common-register-groups>>.
 
 <<<
 
-[#ame:doc:inst:mmove8_m_x]
-=== `mmove8.m.x`
+[#ame:doc:inst:mmove_m_x]
+=== `mmove.m.x`
 
 Synopsis::
-Move one 8-bit scalar into an M register position (debug)
+Move one scalar into a square element position (debug)
 
 Mnemonic::
-`mmove8.m.x md, rs2, rs1`
+`mmove.m.x md, rs1, rs2`
 
 Encoding::
 +
 [wavedrom, ,svg,subs='attributes',width="100%"]
 ....
-{"reg":[{"bits":7,"name":0x2b,"type":2},{"bits":5,"name":"md","type":4},{"bits":3,"name":{ame-enc-funct3},"type":2},{"bits":5,"name":"rs2","type":4},{"bits":5,"name":"rs1","type":4},{"bits":7,"name":0x59,"type":2}]}
+{"reg":[{"bits":7,"name":0x2b,"type":2},{"bits":5,"name":"md","type":4},{"bits":3,"name":{ame-enc-funct3},"type":2},{"bits":5,"name":"rs1","type":4},{"bits":5,"name":"rs2","type":4},{"bits":7,"name":0x59,"type":2}]}
 ....
 
 Description::
-Writes the low 8 bits of `X[rs2]` into one 8-bit element position of the
-single M register `md`.  The contents of `md` are viewed, in row-major order, as
-`N = sqrt(AME_NELEM)` rows of `row_elements = (N * AME_UNIT_DATATYPE_SIZE) / 8`
-8-bit elements each, independent of the configured datatype `Md[md]`.
+Writes one logical element of the square operand at `md`, selected by the
+position in integer register `rs2`, from `X[rs1]` zero-extended or truncated to
+the element size.  The selected element is replaced and every other element is
+preserved.
 +
-The element position `pos` is selected by the low `log2(N * row_elements)`
-bits of `X[rs1]`; higher bits are ignored.  The selected column is
-`pos % row_elements` and the selected row is `pos / row_elements`.
+`Md[md]` gives the element size `e`, which sets the operand's extent.  For
+`unit = AME_UNIT_DATATYPE_SIZE` and `N = sqrt(AME_NELEM)` the operand holds
+`pack_factor` complete `N` by `N` squares, where `pack_factor` is `unit / e` when
+`e` is smaller than `unit` and `1` otherwise.  When `e` exceeds `unit`, one
+square spans `ceil(e / unit)` consecutive M registers and `md` shall be that
+group's base register.
 +
-The element size is defined by
-the instruction itself: it does not read `CSR[amestype]`, does not
-read or convert using `Md[md]`, does not form a register group, and never
-sets `amestatus.UN`.  The register contents are first normalized with the
-row-major layout transformation, using the unsigned integer datatype of
-size `AME_UNIT_DATATYPE_SIZE`, for which exactly one square occupies one M
-register; the normalized image is then reinterpreted, by bit slicing, as
-`N` rows of `row_elements` elements of the instruction's element size.
-Both steps are defined independently of the implementation register
-layout, so the position-to-element mapping is identical on every
-implementation.  If one row of the row-major
-view is narrower than the element size, an `Illegal Instruction` exception
-is raised.
+The position `pos` is the low `log2(pack_factor * AME_NELEM)` bits of `X[rs2]`;
+higher bits are ignored.  It selects square `pos / AME_NELEM`, row
+`(pos / N) % N`, and column `pos % N`.  A non-packed operand has
+`pack_factor = 1` and therefore square index zero.
++
+If `Md[md]` is zero, unknown, or not a supported datatype, the tuple is
+unsupported under
+<<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>.
 
 Operation::
 +
 [source]
 ----
-D.rm[pos, 8] = X[rs2][7:0]
+pos = X[rs2][log2(pack_factor * AME_NELEM)-1:0]
+s = pos / AME_NELEM
+i = (pos / N) % N
+j = pos % N
+raw_bits(D[s][i,j]) = zero_resize(X[rs1], e)
 ----
 +
 This operation uses the common rules in <<ame-common-register-groups>>.
 
 <<<
 
-[#ame:doc:inst:mmove16_m_x]
-=== `mmove16.m.x`
+[#ame:doc:inst:mmove_x_m]
+=== `mmove.x.m`
 
 Synopsis::
-Move one 16-bit scalar into an M register position (debug)
+Move one square element to an X register (debug)
 
 Mnemonic::
-`mmove16.m.x md, rs2, rs1`
+`mmove.x.m rd, ms1, rs2`
 
 Encoding::
 +
 [wavedrom, ,svg,subs='attributes',width="100%"]
 ....
-{"reg":[{"bits":7,"name":0x2b,"type":2},{"bits":5,"name":"md","type":4},{"bits":3,"name":{ame-enc-funct3},"type":2},{"bits":5,"name":"rs2","type":4},{"bits":5,"name":"rs1","type":4},{"bits":7,"name":0x5a,"type":2}]}
+{"reg":[{"bits":7,"name":0x2b,"type":2},{"bits":5,"name":"rd","type":4},{"bits":3,"name":{ame-enc-funct3},"type":2},{"bits":5,"name":"ms1","type":4},{"bits":5,"name":"rs2","type":4},{"bits":7,"name":0x5d,"type":2}]}
 ....
 
 Description::
-Writes the low 16 bits of `X[rs2]` into one 16-bit element position of the
-single M register `md`.  The contents of `md` are viewed, in row-major order, as
-`N = sqrt(AME_NELEM)` rows of `row_elements = (N * AME_UNIT_DATATYPE_SIZE) / 16`
-16-bit elements each, independent of the configured datatype `Md[md]`.
+Reads one logical element of the square operand at `ms1`, selected by the
+position in integer register `rs2`, and writes it to `X[rd]` zero-extended or
+truncated to XLEN.
 +
-The element position `pos` is selected by the low `log2(N * row_elements)`
-bits of `X[rs1]`; higher bits are ignored.  The selected column is
-`pos % row_elements` and the selected row is `pos / row_elements`.
+`Md[ms1]` gives the element size `e`; the operand's extent and the formation of
+`pos` are as in <<ame:doc:inst:mmove_m_x,mmove.m.x>>, with `ms1` as the group
+base register when `e` exceeds `AME_UNIT_DATATYPE_SIZE`.
 +
-The element size is defined by
-the instruction itself: it does not read `CSR[amestype]`, does not
-read or convert using `Md[md]`, does not form a register group, and never
-sets `amestatus.UN`.  The register contents are first normalized with the
-row-major layout transformation, using the unsigned integer datatype of
-size `AME_UNIT_DATATYPE_SIZE`, for which exactly one square occupies one M
-register; the normalized image is then reinterpreted, by bit slicing, as
-`N` rows of `row_elements` elements of the instruction's element size.
-Both steps are defined independently of the implementation register
-layout, so the position-to-element mapping is identical on every
-implementation.  If one row of the row-major
-view is narrower than the element size, an `Illegal Instruction` exception
-is raised.
+If `Md[ms1]` is zero, unknown, or not a supported datatype, the tuple is
+unsupported under
+<<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>, and
+`X[rd]` is not written.
 
 Operation::
 +
 [source]
 ----
-D.rm[pos, 16] = X[rs2][15:0]
-----
-+
-This operation uses the common rules in <<ame-common-register-groups>>.
-
-<<<
-
-[#ame:doc:inst:mmove32_m_x]
-=== `mmove32.m.x`
-
-Synopsis::
-Move one 32-bit scalar into an M register position (debug)
-
-Mnemonic::
-`mmove32.m.x md, rs2, rs1`
-
-Encoding::
-+
-[wavedrom, ,svg,subs='attributes',width="100%"]
-....
-{"reg":[{"bits":7,"name":0x2b,"type":2},{"bits":5,"name":"md","type":4},{"bits":3,"name":{ame-enc-funct3},"type":2},{"bits":5,"name":"rs2","type":4},{"bits":5,"name":"rs1","type":4},{"bits":7,"name":0x5b,"type":2}]}
-....
-
-Description::
-Writes the low 32 bits of `X[rs2]` into one 32-bit element position of the
-single M register `md`.  The contents of `md` are viewed, in row-major order, as
-`N = sqrt(AME_NELEM)` rows of `row_elements = (N * AME_UNIT_DATATYPE_SIZE) / 32`
-32-bit elements each, independent of the configured datatype `Md[md]`.
-+
-The element position `pos` is selected by the low `log2(N * row_elements)`
-bits of `X[rs1]`; higher bits are ignored.  The selected column is
-`pos % row_elements` and the selected row is `pos / row_elements`.
-+
-The element size is defined by
-the instruction itself: it does not read `CSR[amestype]`, does not
-read or convert using `Md[md]`, does not form a register group, and never
-sets `amestatus.UN`.  The register contents are first normalized with the
-row-major layout transformation, using the unsigned integer datatype of
-size `AME_UNIT_DATATYPE_SIZE`, for which exactly one square occupies one M
-register; the normalized image is then reinterpreted, by bit slicing, as
-`N` rows of `row_elements` elements of the instruction's element size.
-Both steps are defined independently of the implementation register
-layout, so the position-to-element mapping is identical on every
-implementation.  If one row of the row-major
-view is narrower than the element size, an `Illegal Instruction` exception
-is raised.
-
-Operation::
-+
-[source]
-----
-D.rm[pos, 32] = X[rs2][31:0]
-----
-+
-This operation uses the common rules in <<ame-common-register-groups>>.
-
-<<<
-
-[#ame:doc:inst:mmove64_m_x]
-=== `mmove64.m.x`
-
-Synopsis::
-Move one 64-bit scalar into an M register position (debug)
-
-Mnemonic::
-`mmove64.m.x md, rs2, rs1`
-
-Encoding::
-+
-[wavedrom, ,svg,subs='attributes',width="100%"]
-....
-{"reg":[{"bits":7,"name":0x2b,"type":2},{"bits":5,"name":"md","type":4},{"bits":3,"name":{ame-enc-funct3},"type":2},{"bits":5,"name":"rs2","type":4},{"bits":5,"name":"rs1","type":4},{"bits":7,"name":0x5c,"type":2}]}
-....
-
-Description::
-Writes the low 64 bits of `X[rs2]` into one 64-bit element position of the
-single M register `md`.  The contents of `md` are viewed, in row-major order, as
-`N = sqrt(AME_NELEM)` rows of `row_elements = (N * AME_UNIT_DATATYPE_SIZE) / 64`
-64-bit elements each, independent of the configured datatype `Md[md]`.
-+
-This 64-bit form requires `XLEN >= 64`; when `XLEN < 64`, the instruction
-raises an `Illegal Instruction` exception.
-+
-The element position `pos` is selected by the low `log2(N * row_elements)`
-bits of `X[rs1]`; higher bits are ignored.  The selected column is
-`pos % row_elements` and the selected row is `pos / row_elements`.
-+
-The element size is defined by
-the instruction itself: it does not read `CSR[amestype]`, does not
-read or convert using `Md[md]`, does not form a register group, and never
-sets `amestatus.UN`.  The register contents are first normalized with the
-row-major layout transformation, using the unsigned integer datatype of
-size `AME_UNIT_DATATYPE_SIZE`, for which exactly one square occupies one M
-register; the normalized image is then reinterpreted, by bit slicing, as
-`N` rows of `row_elements` elements of the instruction's element size.
-Both steps are defined independently of the implementation register
-layout, so the position-to-element mapping is identical on every
-implementation.  If one row of the row-major
-view is narrower than the element size, an `Illegal Instruction` exception
-is raised.
-
-Operation::
-+
-[source]
-----
-D.rm[pos, 64] = X[rs2][63:0]
-----
-+
-This operation uses the common rules in <<ame-common-register-groups>>.
-
-<<<
-
-[#ame:doc:inst:mmove8_x_m]
-=== `mmove8.x.m`
-
-Synopsis::
-Move one 8-bit element from an M register position to an X register (debug)
-
-Mnemonic::
-`mmove8.x.m rd, ms2, rs1`
-
-Encoding::
-+
-[wavedrom, ,svg,subs='attributes',width="100%"]
-....
-{"reg":[{"bits":7,"name":0x2b,"type":2},{"bits":5,"name":"rd","type":4},{"bits":3,"name":{ame-enc-funct3},"type":2},{"bits":5,"name":"ms2","type":4},{"bits":5,"name":"rs1","type":4},{"bits":7,"name":0x5d,"type":2}]}
-....
-
-Description::
-Reads one 8-bit element from the single M register `ms2` and writes it,
-zero-extended, to `X[rd]`.  The contents of `ms2` are viewed, in row-major order, as
-`N = sqrt(AME_NELEM)` rows of `row_elements = (N * AME_UNIT_DATATYPE_SIZE) / 8`
-8-bit elements each, independent of the configured datatype `Md[ms2]`.
-+
-The element position `pos` is selected by the low `log2(N * row_elements)`
-bits of `X[rs1]`, exactly as in `<<ame:doc:inst:mmove8_m_x,mmove8.m.x>>`;
-higher bits are ignored.  The selected column is `pos % row_elements` and
-the selected row is `pos / row_elements`.
-+
-The element size is defined by
-the instruction itself: it does not read `CSR[amestype]`, does not
-read or convert using `Md[ms2]`, does not form a register group, and never
-sets `amestatus.UN`.  The register contents are first normalized with the
-row-major layout transformation, using the unsigned integer datatype of
-size `AME_UNIT_DATATYPE_SIZE`, for which exactly one square occupies one M
-register; the normalized image is then reinterpreted, by bit slicing, as
-`N` rows of `row_elements` elements of the instruction's element size.
-Both steps are defined independently of the implementation register
-layout, so the position-to-element mapping is identical on every
-implementation.  If one row of the row-major
-view is narrower than the element size, an `Illegal Instruction` exception
-is raised.
-
-Operation::
-+
-[source]
-----
-X[rd] = zero_extend(A.rm[pos, 8])
-----
-+
-This operation uses the common rules in <<ame-common-register-groups>>.
-
-<<<
-
-[#ame:doc:inst:mmove16_x_m]
-=== `mmove16.x.m`
-
-Synopsis::
-Move one 16-bit element from an M register position to an X register (debug)
-
-Mnemonic::
-`mmove16.x.m rd, ms2, rs1`
-
-Encoding::
-+
-[wavedrom, ,svg,subs='attributes',width="100%"]
-....
-{"reg":[{"bits":7,"name":0x2b,"type":2},{"bits":5,"name":"rd","type":4},{"bits":3,"name":{ame-enc-funct3},"type":2},{"bits":5,"name":"ms2","type":4},{"bits":5,"name":"rs1","type":4},{"bits":7,"name":0x5e,"type":2}]}
-....
-
-Description::
-Reads one 16-bit element from the single M register `ms2` and writes it,
-zero-extended, to `X[rd]`.  The contents of `ms2` are viewed, in row-major order, as
-`N = sqrt(AME_NELEM)` rows of `row_elements = (N * AME_UNIT_DATATYPE_SIZE) / 16`
-16-bit elements each, independent of the configured datatype `Md[ms2]`.
-+
-The element position `pos` is selected by the low `log2(N * row_elements)`
-bits of `X[rs1]`, exactly as in `<<ame:doc:inst:mmove16_m_x,mmove16.m.x>>`;
-higher bits are ignored.  The selected column is `pos % row_elements` and
-the selected row is `pos / row_elements`.
-+
-The element size is defined by
-the instruction itself: it does not read `CSR[amestype]`, does not
-read or convert using `Md[ms2]`, does not form a register group, and never
-sets `amestatus.UN`.  The register contents are first normalized with the
-row-major layout transformation, using the unsigned integer datatype of
-size `AME_UNIT_DATATYPE_SIZE`, for which exactly one square occupies one M
-register; the normalized image is then reinterpreted, by bit slicing, as
-`N` rows of `row_elements` elements of the instruction's element size.
-Both steps are defined independently of the implementation register
-layout, so the position-to-element mapping is identical on every
-implementation.  If one row of the row-major
-view is narrower than the element size, an `Illegal Instruction` exception
-is raised.
-
-Operation::
-+
-[source]
-----
-X[rd] = zero_extend(A.rm[pos, 16])
-----
-+
-This operation uses the common rules in <<ame-common-register-groups>>.
-
-<<<
-
-[#ame:doc:inst:mmove32_x_m]
-=== `mmove32.x.m`
-
-Synopsis::
-Move one 32-bit element from an M register position to an X register (debug)
-
-Mnemonic::
-`mmove32.x.m rd, ms2, rs1`
-
-Encoding::
-+
-[wavedrom, ,svg,subs='attributes',width="100%"]
-....
-{"reg":[{"bits":7,"name":0x2b,"type":2},{"bits":5,"name":"rd","type":4},{"bits":3,"name":{ame-enc-funct3},"type":2},{"bits":5,"name":"ms2","type":4},{"bits":5,"name":"rs1","type":4},{"bits":7,"name":0x5f,"type":2}]}
-....
-
-Description::
-Reads one 32-bit element from the single M register `ms2` and writes it,
-zero-extended, to `X[rd]`.  The contents of `ms2` are viewed, in row-major order, as
-`N = sqrt(AME_NELEM)` rows of `row_elements = (N * AME_UNIT_DATATYPE_SIZE) / 32`
-32-bit elements each, independent of the configured datatype `Md[ms2]`.
-+
-The element position `pos` is selected by the low `log2(N * row_elements)`
-bits of `X[rs1]`, exactly as in `<<ame:doc:inst:mmove32_m_x,mmove32.m.x>>`;
-higher bits are ignored.  The selected column is `pos % row_elements` and
-the selected row is `pos / row_elements`.
-+
-The element size is defined by
-the instruction itself: it does not read `CSR[amestype]`, does not
-read or convert using `Md[ms2]`, does not form a register group, and never
-sets `amestatus.UN`.  The register contents are first normalized with the
-row-major layout transformation, using the unsigned integer datatype of
-size `AME_UNIT_DATATYPE_SIZE`, for which exactly one square occupies one M
-register; the normalized image is then reinterpreted, by bit slicing, as
-`N` rows of `row_elements` elements of the instruction's element size.
-Both steps are defined independently of the implementation register
-layout, so the position-to-element mapping is identical on every
-implementation.  If one row of the row-major
-view is narrower than the element size, an `Illegal Instruction` exception
-is raised.
-
-Operation::
-+
-[source]
-----
-X[rd] = zero_extend(A.rm[pos, 32])
-----
-+
-This operation uses the common rules in <<ame-common-register-groups>>.
-
-<<<
-
-[#ame:doc:inst:mmove64_x_m]
-=== `mmove64.x.m`
-
-Synopsis::
-Move one 64-bit element from an M register position to an X register (debug)
-
-Mnemonic::
-`mmove64.x.m rd, ms2, rs1`
-
-Encoding::
-+
-[wavedrom, ,svg,subs='attributes',width="100%"]
-....
-{"reg":[{"bits":7,"name":0x2b,"type":2},{"bits":5,"name":"rd","type":4},{"bits":3,"name":{ame-enc-funct3},"type":2},{"bits":5,"name":"ms2","type":4},{"bits":5,"name":"rs1","type":4},{"bits":7,"name":0x60,"type":2}]}
-....
-
-Description::
-Reads one 64-bit element from the single M register `ms2` and writes it,
-zero-extended, to `X[rd]`.  The contents of `ms2` are viewed, in row-major order, as
-`N = sqrt(AME_NELEM)` rows of `row_elements = (N * AME_UNIT_DATATYPE_SIZE) / 64`
-64-bit elements each, independent of the configured datatype `Md[ms2]`.
-+
-This 64-bit form requires `XLEN >= 64`; when `XLEN < 64`, the instruction
-raises an `Illegal Instruction` exception.
-+
-The element position `pos` is selected by the low `log2(N * row_elements)`
-bits of `X[rs1]`, exactly as in `<<ame:doc:inst:mmove64_m_x,mmove64.m.x>>`;
-higher bits are ignored.  The selected column is `pos % row_elements` and
-the selected row is `pos / row_elements`.
-+
-The element size is defined by
-the instruction itself: it does not read `CSR[amestype]`, does not
-read or convert using `Md[ms2]`, does not form a register group, and never
-sets `amestatus.UN`.  The register contents are first normalized with the
-row-major layout transformation, using the unsigned integer datatype of
-size `AME_UNIT_DATATYPE_SIZE`, for which exactly one square occupies one M
-register; the normalized image is then reinterpreted, by bit slicing, as
-`N` rows of `row_elements` elements of the instruction's element size.
-Both steps are defined independently of the implementation register
-layout, so the position-to-element mapping is identical on every
-implementation.  If one row of the row-major
-view is narrower than the element size, an `Illegal Instruction` exception
-is raised.
-
-Operation::
-+
-[source]
-----
-X[rd] = zero_extend(A.rm[pos, 64])
+pos = X[rs2][log2(pack_factor * AME_NELEM)-1:0]
+s = pos / AME_NELEM
+i = (pos / N) % N
+j = pos % N
+X[rd] = zero_resize(raw_bits(A[s][i,j]), XLEN)
 ----
 +
 This operation uses the common rules in <<ame-common-register-groups>>.
@@ -3588,10 +3252,10 @@ Description::
 Computes the elementwise bitwise OR of a scalar constant from integer register
 `rs1` with every element of square `ms2` and stores the result in `md`.
 +
-For standard datatypes, `Md[ms2]` and `Md[md]` shall be the same integer
-datatype, and the converted scalar and matrix elements are operated on as raw
-bits.  An accepted custom tuple shall define its operand widths, raw-bit
-operation, and destination representation.
+For standard datatypes, `CSR[amestype]`, `Md[ms2]`, and `Md[md]` shall specify
+the same integer datatype, and the scalar and matrix elements are operated on
+as raw bits.  An accepted custom tuple shall define its operand widths,
+raw-bit operation, and destination representation.
 
 Operation::
 +
@@ -3660,10 +3324,10 @@ Computes the elementwise bitwise OR of a scalar constant from integer register
 `rs1` with the bitwise complement of every element of square `ms2` and stores
 the result in `md`.
 +
-For standard datatypes, `Md[ms2]` and `Md[md]` shall be the same integer
-datatype, and the converted scalar and matrix elements are operated on as raw
-bits.  An accepted custom tuple shall define its operand widths, raw-bit
-operation, and destination representation.
+For standard datatypes, `CSR[amestype]`, `Md[ms2]`, and `Md[md]` shall specify
+the same integer datatype, and the scalar and matrix elements are operated on
+as raw bits.  An accepted custom tuple shall define its operand widths,
+raw-bit operation, and destination representation.
 
 Operation::
 +
@@ -3699,21 +3363,21 @@ from the non-packed datatype (`Md[ms2]`) to the packed datatype (`Md[md]`). The 
 sub-square slots of `md` are preserved (read-modify-write).
 +
 `Md[md]` must be a packed datatype and `Md[ms2]` a non-packed datatype; otherwise
-`amestatus.UN` is set and no register is written. For
+`amestatus.UN` is set and no register is written.  `CSR[amestype]` shall be an
+integer datatype able to represent every slot index in `[0, pack_factor)`.  For
 `pack_factor = AME_UNIT_DATATYPE_SIZE / sizeof(Md[md])`, the index is the low
-`log2(pack_factor)` bits of `X[rs1]`; higher X-register bits are ignored.  The
-index is a fixed-type unsigned control scalar and does not read
-`CSR[amestype]`.
+`log2(pack_factor)` bits of the interpreted value; higher bits are ignored.
 
 Operation::
 +
 [source]
 ----
-slot = X[rs1][log2(pack_factor)-1:0]
+slot = c[log2(pack_factor)-1:0]
 D[slot] = convert(A)
 ----
 +
-This operation uses the common rules in <<ame-common-register-groups>>.
+This operation uses the common rules in <<ame-common-register-groups>> and
+<<ame-common-scalar-operands>>.
 
 <<<
 
@@ -3915,7 +3579,7 @@ This operation uses <<norm:ame_nsq_structural,the structural operand-formation r
 === `mrdexp.ew`
 
 Synopsis::
-Elementwise right-shift scale
+Elementwise negative-power-of-two scale
 
 Mnemonic::
 `mrdexp.ew md, ms1, ms2`
@@ -3952,7 +3616,7 @@ This operation uses the common rules in <<ame-common-arithmetic>>.
 === `mrdexpacc.ew`
 
 Synopsis::
-Elementwise right-shift scale accumulate
+Elementwise negative-power-of-two scale accumulate
 
 Mnemonic::
 `mrdexpacc.ew md, ms1, ms2`
@@ -3965,7 +3629,7 @@ Encoding::
 ....
 
 Description::
-Elementwise right-shift scale of `ms1` by a negative power of two given by `ms2`,
+Elementwise scale of `ms1` by a negative power of two given by `ms2`,
 accumulated into `md`.
 +
 `md` is both a source and destination: the existing element is read, the scaled value
@@ -4330,17 +3994,20 @@ Description::
 Broadcasts row `c` (from integer register `rs1`) of `ms2` to every row of
 `md`, independently for every column.
 +
-If `c` is outside `[0, sqrt(AME_NELEM))`, an `Illegal Instruction` exception is raised.
+`CSR[amestype]` shall be an integer datatype able to represent every value in
+`[0, sqrt(AME_NELEM))`, under which the `rs1` operand is interpreted to give the
+row index; otherwise the tuple is unsupported and `amestatus.UN` is set.
 +
-The `rs1` operand is a fixed-type control scalar: its low 32 bits are interpreted as an
-unsigned integer row index.  It does not read `CSR[amestype]` and does not undergo
-AME datatype conversion.
+If `c` is outside `[0, sqrt(AME_NELEM))`, an `Illegal Instruction` exception is
+raised.  Because `c` derives from datatype state rather than an encoded field,
+this definition places that check after the datatype tuple check of
+<<ame-common-operand-validation,the operand-validation order>>.
 +
 `md` and `ms2` each contain exactly one logical square.  Packed datatypes are
 unsupported and are handled according to
 <<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>.
 +
-`Md[ms2]` and `Md[md]` shall be identical; a mismatch is an unsupported
+`Md[ms2]` and `Md[md]` shall specify the same datatype; a mismatch is an unsupported
 datatype tuple.
 
 Operation::
@@ -4349,6 +4016,8 @@ Operation::
 ----
 D[i,j] = A[c,j]
 ----
++
+This operation uses the common rules in <<ame-common-scalar-operands>>.
 
 <<<
 
@@ -4373,7 +4042,7 @@ Elementwise row gather: for each element in each column, uses the corresponding 
 to select a row from the same column of `ms1`, and stores the result into `md`.
 +
 `md`, `ms1`, and `ms2` each contain exactly one logical square.  Packed
-datatypes are unsupported.  `Md[ms1]` and `Md[md]` shall be identical, and
+datatypes are unsupported.  `Md[ms1]` and `Md[md]` shall specify the same datatype, and
 `Md[ms2]` shall be an integer datatype.  A tuple that violates any of these
 requirements is handled according to
 <<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>.
@@ -4449,9 +4118,10 @@ Encoding::
 
 Description::
 Performs an elementwise row shift of `ms2` by offset `c` and stores the result in
-`md`.  The offset is obtained by interpreting the low 32 bits of integer register
-`rs1` as a signed two's-complement integer.  This fixed-type control scalar does
-not read `CSR[amestype]`.
+`md`.  `CSR[amestype]` shall be a signed integer datatype able to represent
+every offset in `(-sqrt(AME_NELEM), sqrt(AME_NELEM))`, under which the `rs1`
+operand is interpreted to give the offset; otherwise the tuple is unsupported
+and `amestatus.UN` is set.
 +
 Elements shifted beyond the row boundary are filled with zero (no wrap-around).
 +
@@ -4459,7 +4129,7 @@ Elements shifted beyond the row boundary are filled with zero (no wrap-around).
 unsupported and are handled according to
 <<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>.
 +
-`Md[ms2]` and `Md[md]` shall be identical; a mismatch is an unsupported
+`Md[ms2]` and `Md[md]` shall specify the same datatype; a mismatch is an unsupported
 datatype tuple.
 
 Operation::
@@ -4468,6 +4138,8 @@ Operation::
 ----
 D[i,j] = (0 <= i+c < sqrt(AME_NELEM)) ? A[i+c,j] : zero(Md[md])
 ----
++
+This operation uses the common rules in <<ame-common-scalar-operands>>.
 
 <<<
 
@@ -4510,7 +4182,8 @@ element is copied bit-for-bit in that common datatype representation.  This
 preserves floating-point NaN payloads and signed zeros, and all custom-datatype
 representations.
 +
-Packed datatypes are unsupported and are handled according to
+`Md[ms1]` and `Md[ms2]` shall be non-packed datatypes; a packed tensor
+descriptor makes the tuple unsupported under
 <<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>.
 +
 Inverse of `mrowzip.ew`.
@@ -4565,7 +4238,8 @@ element is copied bit-for-bit in that common datatype representation.  This
 preserves floating-point NaN payloads and signed zeros, and all custom-datatype
 representations.
 +
-Packed datatypes are unsupported and are handled according to
+`Md[ms1]` and `Md[ms2]` shall be non-packed datatypes; a packed tensor
+descriptor makes the tuple unsupported under
 <<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>.
 +
 Inverse of `mrowunzip.ew`.
@@ -4869,7 +4543,7 @@ element is written to `md`; otherwise the destination datatype's semantic zero,
 including its canonical zero sign, is written.
 +
 The predicate datatype `Md[ms1]` shall define the ordered comparison used by
-the `Operation`, and `Md[ms2]` and `Md[md]` shall be identical.  A tuple that
+the `Operation`, and `Md[ms2]` and `Md[md]` shall specify the same datatype.  A tuple that
 violates either requirement is unsupported under
 <<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>.
 An accepted custom tuple shall define the selected-value representation and
@@ -4911,7 +4585,7 @@ written to `md`; otherwise the destination datatype's semantic zero, including
 its canonical zero sign, is written.
 +
 The predicate datatype `Md[ms1]` shall define the ordered comparison used by
-the `Operation`, and `Md[ms2]` and `Md[md]` shall be identical.  A tuple that
+the `Operation`, and `Md[ms2]` and `Md[md]` shall specify the same datatype.  A tuple that
 violates either requirement is unsupported under
 <<norm:ame_op_supported_contract,the unsupported-datatype-tuple contract>>.
 An accepted custom tuple shall define the selected-value representation and
@@ -5052,10 +4726,11 @@ Description::
 Performs a logical left shift on every element of `ms2` by a scalar amount from
 integer register `rs1` and stores the result in `md`.
 +
-For a standard tuple, the data source and result are integer datatypes.  The
-shift amount is a fixed-type unsigned control scalar, does not read
-`CSR[amestype]`, and is reduced modulo the `ms2` element width.  An accepted
-custom tuple shall define its logical-shift behavior and result representation.
+For a standard tuple, the data source, result, and `CSR[amestype]` are integer
+datatypes, and `CSR[amestype]` shall be able to represent every shift amount in
+`[0, EW)`.  The shift amount is `c` reduced modulo the `ms2` element width.  An
+accepted custom tuple shall define its logical-shift behavior and result
+representation.
 
 Operation::
 +
@@ -5064,7 +4739,8 @@ Operation::
 D[i] = B[i] << (c mod EW)
 ----
 +
-This operation uses the common rules in <<ame-common-arithmetic>>.
+This operation uses the common rules in <<ame-common-arithmetic>> and
+<<ame-common-scalar-operands>>.
 
 <<<
 
@@ -5160,9 +4836,10 @@ Description::
 Performs an arithmetic (sign-preserving) right shift on every element of `ms2`
 by a scalar amount from integer register `rs1` and stores the result in `md`.
 +
-For a standard tuple, `Md[ms2]` is a signed integer datatype and the result is
-an integer datatype.  The shift amount is a fixed-type unsigned control scalar, does
-not read `CSR[amestype]`, and is reduced modulo the `ms2` element width.  An
+For a standard tuple, `Md[ms2]` is a signed integer datatype and the result and
+`CSR[amestype]` are integer datatypes, and `CSR[amestype]` shall be able to
+represent every shift amount in `[0, EW)`.  The shift amount is `c` reduced
+modulo the `ms2` element width.  An
 accepted custom tuple shall define its sign-extending shift behavior and result
 representation.
 
@@ -5173,7 +4850,8 @@ Operation::
 D[i] = B[i] >>s (c mod EW)
 ----
 +
-This operation uses the common rules in <<ame-common-arithmetic>>.
+This operation uses the common rules in <<ame-common-arithmetic>> and
+<<ame-common-scalar-operands>>.
 
 <<<
 
@@ -5232,10 +4910,11 @@ Description::
 Performs a logical (unsigned) right shift on every element of `ms2` by a scalar
 amount from integer register `rs1` and stores the result in `md`.
 +
-For a standard tuple, the data source and result are integer datatypes.  The
-shift amount is a fixed-type unsigned control scalar, does not read
-`CSR[amestype]`, and is reduced modulo the `ms2` element width.  An accepted
-custom tuple shall define its logical-shift behavior and result representation.
+For a standard tuple, the data source, result, and `CSR[amestype]` are integer
+datatypes, and `CSR[amestype]` shall be able to represent every shift amount in
+`[0, EW)`.  The shift amount is `c` reduced modulo the `ms2` element width.  An
+accepted custom tuple shall define its logical-shift behavior and result
+representation.
 
 Operation::
 +
@@ -5244,7 +4923,8 @@ Operation::
 D[i] = B[i] >>u (c mod EW)
 ----
 +
-This operation uses the common rules in <<ame-common-arithmetic>>.
+This operation uses the common rules in <<ame-common-arithmetic>> and
+<<ame-common-scalar-operands>>.
 
 <<<
 
@@ -5604,21 +5284,21 @@ packed M register `ms2` and writes it to the non-packed M register group beginni
 element from the packed datatype (`Md[ms2]`) to the non-packed datatype (`Md[md]`).
 +
 `Md[ms2]` must be a packed datatype and `Md[md]` a non-packed datatype; otherwise
-`amestatus.UN` is set and no register is written. For
+`amestatus.UN` is set and no register is written.  `CSR[amestype]` shall be an
+integer datatype able to represent every slot index in `[0, pack_factor)`.  For
 `pack_factor = AME_UNIT_DATATYPE_SIZE / sizeof(Md[ms2])`, the index is the low
-`log2(pack_factor)` bits of `X[rs1]`; higher X-register bits are ignored.  The
-index is a fixed-type unsigned control scalar and does not read
-`CSR[amestype]`.
+`log2(pack_factor)` bits of the interpreted value; higher bits are ignored.
 
 Operation::
 +
 [source]
 ----
-slot = X[rs1][log2(pack_factor)-1:0]
+slot = c[log2(pack_factor)-1:0]
 D = convert(A[slot])
 ----
 +
-This operation uses the common rules in <<ame-common-register-groups>>.
+This operation uses the common rules in <<ame-common-register-groups>> and
+<<ame-common-scalar-operands>>.
 
 <<<
 
@@ -5677,10 +5357,10 @@ Description::
 Computes the elementwise bitwise XOR of a scalar constant from integer register
 `rs1` with every element of square `ms2` and stores the result in `md`.
 +
-For standard datatypes, `Md[ms2]` and `Md[md]` shall be the same integer
-datatype, and the converted scalar and matrix elements are operated on as raw
-bits.  An accepted custom tuple shall define its operand widths, raw-bit
-operation, and destination representation.
+For standard datatypes, `CSR[amestype]`, `Md[ms2]`, and `Md[md]` shall specify
+the same integer datatype, and the scalar and matrix elements are operated on
+as raw bits.  An accepted custom tuple shall define its operand widths,
+raw-bit operation, and destination representation.
 
 Operation::
 +

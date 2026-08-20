@@ -53,6 +53,17 @@ exception handling may change.#
 [[ame-common-datatype-support]]
 ==== Datatype tuple support
 
+An *instruction datatype tuple* is the operation together with every datatype the
+instruction interprets as a type in producing its result, regardless of where
+each one comes from: the `Md` and `Ad` descriptors of the operands it interprets,
+`CSR[amestype]` for a CSR-typed scalar, and any datatype an instruction supplies
+explicitly in an X register.  A descriptor that an instruction only copies,
+replaces wholesale, or ignores is not a required datatype.
+
+Two datatype descriptors *specify the same datatype* when they agree on class,
+size, and signedness.  The rounding-mode and saturation fields are not compared,
+so descriptors differing only in those fields specify the same datatype.
+
 [#norm:ame_op_supported_contract]#An instruction datatype tuple is unsupported
 when a required datatype is zero or unknown, the operation is not implemented,
 the exact operation/datatype combination is not supported, or a datatype
@@ -136,10 +147,28 @@ ordered update, `D` or `C` on the right-hand side denotes the pre-instruction
 destination value under
 <<norm:ame_source_snapshot,the pre-instruction source snapshot rule>>.
 
+`x mod y` denotes the non-negative remainder of `x` divided by `y`, so a negative
+`x` yields a result in `[0, y)`.  `x[h:l]` denotes a bit field of `x`'s
+representation, and `zero_extend_XLEN(v)` denotes `v` zero-extended to XLEN bits.
+`zero_resize(v, w)` denotes the `w`-bit value formed from `v`'s bit
+representation, which shall have a defined width: zero-extended when `w` exceeds
+that width, otherwise its low `w` bits.
+
 `M[r]` and `Acc[r]` denote physical registers rather than formed operands.
-`raw_bits(...)` denotes the uninterpreted bit pattern of the named physical
-register or contiguous register range; it bypasses operand formation and
-datatype interpretation.
+`raw_bits(...)` denotes the uninterpreted bit pattern of its operand: a named
+physical register, a contiguous register range, or a single element of a formed
+operand.  It bypasses datatype interpretation — the bits are transferred as they
+stand, with no conversion, rounding, saturation, NaN quieting, or zero-sign
+normalization, and with no `amefflags` or `amexsat` update.  Applied to a
+physical register or register range it also bypasses operand formation; applied
+to an element of a formed operand, operand formation still locates that element
+while the value itself remains uninterpreted.  An element's raw bits are its
+datatype's `sizeof(dtype)`-bit representation with bit 0 the least-significant
+bit of that datatype, that is, the element's field in the row-major
+interoperability bit string of <<ame-common-memory,the interoperability transfer
+rules>>.  Used as an assignment target, `raw_bits(x) = v` writes `v` bit for bit
+into that representation without interpreting it; `v` shall have the same width
+as the representation.
 
 <<<
 
@@ -257,21 +286,42 @@ unsupported.
 [[ame-common-scalar-operands]]
 ==== Scalars
 
-For a data-scalar `.ew.x` instruction, let
-`scalar_dtype = CSR[amestype]`.  The required tuple includes `Md[md]`,
-`Md[ms2]`, and `scalar_dtype`; a zero, unknown, or unsupported descriptor makes
-the tuple unsupported.  The instruction uses the low `sizeof(scalar_dtype)`
-bits of the X-register operand when XLEN is at least that width and ignores
-higher bits.  When `sizeof(scalar_dtype)` exceeds XLEN, it zero-extends the
-X-register bit pattern to that width.  It interprets the resulting bits using
-`scalar_dtype` and converts the value to `Md[ms2]`; the detailed `Operation`
-then uses that value as `c` and converts its result to `Md[md]` under the
-applicable family rules.  If the exact tuple does not define the required
-scalar-to-`Md[ms2]` conversion, the tuple is unsupported.
+For a CSR-typed-scalar `.ew.x` instruction, let
+`scalar_dtype = CSR[amestype]`.  The required tuple is (`scalar_dtype`,
+`Md[ms2]`, `Md[md]`), and the exact tuple determines whether that combination is
+supported; a zero, unknown, or unsupported descriptor makes it unsupported.  The
+instruction uses the low `sizeof(scalar_dtype)` bits of the X-register operand
+when XLEN is at least that width and ignores higher bits.  When
+`sizeof(scalar_dtype)` exceeds XLEN, it extends the X-register bit pattern to
+that width, sign-extending when `scalar_dtype` is a signed integer datatype and
+zero-extending otherwise.  It interprets the resulting bits using `scalar_dtype` to form
+`c`.  There is no implicit conversion to `Md[ms2]`: `c` participates in the
+detailed `Operation` as the exact value that `scalar_dtype` denotes.  Where that
+`Operation` combines `c` arithmetically with element data, the expression is
+evaluated without an intermediate conversion and its result is converted once to
+`Md[md]` under the family rules selected by `Md[ms2]` and `Md[md]`; where `c`
+only selects an index, offset, shift amount, or slot, no conversion of `c`
+occurs.  If the exact tuple does not define how a `scalar_dtype` value
+participates in that `Operation` together with `Md[ms2]` and `Md[md]` — in
+particular when they belong to different datatype families — the tuple is
+unsupported.
 
-Control scalars, including indices, offsets, shift amounts, strides, and
-packed-slot selectors, are the signed or unsigned integer quantities defined by
-their instruction.  They do not use `amestype` or undergo AME datatype
-conversion.
+When an instruction uses `c` as an index or offset whose out-of-range value is
+architecturally visible, the tuple is unsupported unless `scalar_dtype` can
+represent every value in the range that instruction defines.  An operand that the
+instruction reduces instead — a shift amount taken modulo the element width, or a
+selector taken from low bits — carries no such requirement, because the reduction
+makes every value of `c` well defined.
+
+Every X-register scalar operand of an `.ew.x` instruction is CSR-typed,
+including shift amounts, indices, offsets, and packed-slot selectors.  An
+instruction may constrain the datatypes it accepts and may use only part of the
+interpreted value — the low `log2(pack_factor)` bits of a slot selector, a shift
+amount reduced modulo the element width — but it always derives the operand's
+datatype from `CSR[amestype]`.
+
+Control scalars outside the elementwise instructions, such as memory strides,
+remain the signed or unsigned integer quantities defined by their instruction.
+They do not use `amestype` or undergo AME datatype conversion.
 
 <<<
