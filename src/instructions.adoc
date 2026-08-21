@@ -1031,17 +1031,12 @@ Encoding::
 ....
 
 Description::
-Broadcasts column `c` (from integer register `rs1`) of `ms2` to every column of
-`md`, independently for every row.
+Broadcasts one column of `ms2`, selected by integer register `rs1`, to every
+column of `md`, independently for every row.
 +
-`CSR[amestype]` shall be an integer datatype able to represent every value in
-`[0, sqrt(AME_NELEM))`, under which the `rs1` operand is interpreted to give the
-column index; otherwise the tuple is unsupported and `amestatus.UN` is set.
-+
-If `c` is outside `[0, sqrt(AME_NELEM))`, an `Illegal Instruction` exception is
-raised.  Because `c` derives from datatype state rather than an encoded field,
-this definition places that check after the datatype tuple check of
-<<ame-common-operand-validation,the operand-validation order>>.
+`CSR[amestype]` shall be an integer datatype.  The column index is `c` reduced
+modulo `sqrt(AME_NELEM)`, so higher bits are ignored and the index never raises
+an exception regardless of the value in `rs1`.
 +
 `md` and `ms2` each contain exactly one logical square.  Packed datatypes are
 unsupported and are handled according to
@@ -1054,7 +1049,7 @@ Operation::
 +
 [source]
 ----
-D[i,j] = A[i,c]
+D[i,j] = A[i, c mod sqrt(AME_NELEM)]
 ----
 +
 This operation uses the common rules in <<ame-common-scalar-operands>>.
@@ -3991,17 +3986,12 @@ Encoding::
 ....
 
 Description::
-Broadcasts row `c` (from integer register `rs1`) of `ms2` to every row of
-`md`, independently for every column.
+Broadcasts one row of `ms2`, selected by integer register `rs1`, to every
+row of `md`, independently for every column.
 +
-`CSR[amestype]` shall be an integer datatype able to represent every value in
-`[0, sqrt(AME_NELEM))`, under which the `rs1` operand is interpreted to give the
-row index; otherwise the tuple is unsupported and `amestatus.UN` is set.
-+
-If `c` is outside `[0, sqrt(AME_NELEM))`, an `Illegal Instruction` exception is
-raised.  Because `c` derives from datatype state rather than an encoded field,
-this definition places that check after the datatype tuple check of
-<<ame-common-operand-validation,the operand-validation order>>.
+`CSR[amestype]` shall be an integer datatype.  The row index is `c` reduced
+modulo `sqrt(AME_NELEM)`, so higher bits are ignored and the index never raises
+an exception regardless of the value in `rs1`.
 +
 `md` and `ms2` each contain exactly one logical square.  Packed datatypes are
 unsupported and are handled according to
@@ -4014,7 +4004,7 @@ Operation::
 +
 [source]
 ----
-D[i,j] = A[c,j]
+D[i,j] = A[c mod sqrt(AME_NELEM), j]
 ----
 +
 This operation uses the common rules in <<ame-common-scalar-operands>>.
