@@ -209,7 +209,7 @@ For 2D matrix multiply instructions, the inner product dimension extends to
 multi-operand rule.  They transfer one selected logical square and preserve or
 ignore the other packed slots as specified.  Their instruction-specific
 operand-formation rules take precedence over `N_sq = max(pack_factor)`.
-`mconv.ew`, by contrast, follows the general rule: its source and destination
+`mcvt.ew`, by contrast, follows the general rule: its source and destination
 datatypes may each be packed or non-packed, and both operands span `N_sq`
 squares like any other elementwise instruction.
 
@@ -426,6 +426,9 @@ two classes of precise exception:
   faulting portion of the access nor to any other portion.  A trap handler that can identify
   and resolve the fault may therefore re-execute the instruction, which then repeats the
   whole transfer from the beginning.
+
+Forward progress of an AME memory instruction that may fault requires the platform
+to make the instruction's complete page footprint resident for one execution attempt.
 
 The no-completion guarantees above concern each instruction's own explicit effects.
 As for any other instruction, trap entry updates the trap CSRs, and the implicit
