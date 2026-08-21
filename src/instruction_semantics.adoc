@@ -42,12 +42,12 @@ ordered destination update.
 
 [#norm:ame_atomic_register_writeback]#For register-only AME instructions, all
 destination `M`, `Md`, `Acc`, and `Ad` writes, together with accrued
-`amefflags` and `amexsat` updates, become architecturally visible as one commit
+`amestatus` updates, become architecturally visible as one commit
 only after the instruction completes successfully.#
 
 [#norm:ame_register_exception_atomicity]#If a register-only AME instruction
 raises a synchronous exception, none of its destination writes or accrued
-`amefflags` or `amexsat` updates occur; only architectural trap state written by
+`amestatus` updates occur; only architectural trap state written by
 exception handling may change.#
 
 [[ame-common-datatype-support]]
@@ -192,7 +192,7 @@ Standard floating-point operations additionally follow
 For standard integer arithmetic, the mathematical expression is evaluated
 without intermediate truncation and converted once to the destination integer
 datatype.  A saturating destination clamps an out-of-range result and sets
-`amexsat.SAT`; a non-saturating destination retains the low destination-width
+`amestatus.SAT`; a non-saturating destination retains the low destination-width
 bits.  `mhdiff.ew`, `mhdiff.ew.x`, `mmean.ew`, and `mmean.ew.x` round fraction
 bits below the destination LSB according to
 <<ame-common-integer,the common standard-integer rounding rules>> before that
@@ -212,9 +212,9 @@ implementation-defined product and accumulation behavior of
 
 AME floating-point rounding is selected by the destination datatype; AME has no
 global dynamic rounding mode analogous to `fcsr.FRM`.  Standard floating-point
-operations accrue IEEE exception flags in `amefflags` and do not modify
-`fflags`; they OR the accrued flags into `amefflags` at the commit defined by
-<<norm:ame_atomic_register_writeback,the atomic register-writeback rule>>.
+operations accrue IEEE exception flags in `amestatus.FFLAGS` and do not modify
+`fflags`; they OR the accrued flags into `amestatus.FFLAGS` at the commit
+defined by <<norm:ame_atomic_register_writeback,the atomic register-writeback rule>>.
 
 [#norm:ame_fp_special_values]
 Unless the detailed instruction states an exception, an operation covered by
@@ -231,8 +231,9 @@ they neither trap nor set `amestatus.UN`.  If the destination cannot represent a
 required infinity, the result saturates to the appropriate signed minimum or
 maximum; if it cannot represent a required NaN, the tuple is unsupported.
 
-For standard floating-point datatypes, `amefflags` uses the same five accrued
-exception classes as RISC-V `fflags`, with tininess detected after rounding:
+For standard floating-point datatypes, `amestatus.FFLAGS` uses the same five
+accrued exception classes as RISC-V `fflags`, with tininess detected after
+rounding:
 
 * `NV` is set for a signaling NaN or an invalid operation, including an
   infinity-minus-itself form, zero multiplied by infinity, a finite negative
@@ -251,8 +252,8 @@ exception classes as RISC-V `fflags`, with tininess detected after rounding:
 
 Exact operations and exact conversions set none of these flags.  A custom
 floating-point datatype definition must specify equivalent flag conditions
-for every supported tuple that can update `amefflags`; otherwise that tuple is
-unsupported.
+for every supported tuple that can update `amestatus.FFLAGS`; otherwise that
+tuple is unsupported.
 
 [[ame-common-scalar-operands]]
 ==== Scalars

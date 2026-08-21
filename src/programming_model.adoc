@@ -8,51 +8,9 @@ AME instructions are in-line with other instructions on the hart.
 They are executed in program order, and their memory accesses follow RVWMO at the
 instruction level (see <<ame-consistency-model>>).
 
-[[ame-state-enablement]]
-==== AME state enablement
-
-AME adds a two-bit matrix context status field, `MS[1:0]`, to `mstatus`.
-It is shadowed in `sstatus` and follows the `VS[1:0]` state model.
-
-.Encoding of the `MS[1:0]` status field
-[cols="1,1,3",options="header"]
-|===
-|Encoding |Status |Meaning
-
-|`0`
-|Off
-|AME state is disabled.
-
-|`1`
-|Initial
-|AME state is enabled and initial.
-
-|`2`
-|Clean
-|AME state is enabled and matches its saved image.
-
-|`3`
-|Dirty
-|AME state is enabled and might differ from its saved image.
-|===
-
-Initial, Clean, and Dirty enable AME state. An AME operation that might modify
-that state changes each applicable Initial or Clean field to Dirty unless the
-operation specifies another result. An implementation may set Dirty
-conservatively. Dirty sets the corresponding `SD` bit.
-
-Privileged software may set `MS` to Clean after saving AME state. Writing `MS`
-does not modify AME state. `MS` resets to Off; a hart without AME may make it
-read-only zero.
-
-When the hypervisor extension is present, `vsstatus` contains an `MS[1:0]`
-field. When `V=1`, both `mstatus.MS` and `vsstatus.MS` are applicable. AME is
-enabled only when every applicable field is non-Off, and state changes update
-every applicable field. A Dirty `vsstatus.MS` sets `vsstatus.SD`.
-
-A non-Off `MS` value enables AME state but does not by itself grant access to
-an AME backend. Backend ownership and state-access requirements are defined in
-<<ame-common-state-access>>.
+AME instruction and state access is enabled by the `MS` context-status field
+defined in <<ame-state-enablement>> and additionally requires backend ownership
+under <<ame-common-state-access>>.
 
 === State
 

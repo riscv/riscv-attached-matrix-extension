@@ -156,10 +156,10 @@ other values are reserved. TRY ignores `TIMEOUT_CLASS`.
 An invalid descriptor returns BAD_DESC, and disabled configuration returns
 DISABLED. A request from the current owner returns GRANTED without changing
 the bound state or `MS`. A new grant atomically binds architectural initial
-state, sets `ameown.OWNED` to one, and sets each applicable `MS` field to
-Initial. Initial state has zero-valued `M` and `Acc` registers, zero-valued
-`Md` and `Ad` descriptors, and reset-valued writable AME CSRs. Failure changes
-neither backend binding, `ameown`, nor `MS`.
+state and sets `ameown.OWNED` to one. It does not modify `MS`. Initial state has
+zero-valued `M` and `Acc` registers, zero-valued `Md` and `Ad` descriptors, and
+reset-valued writable AME CSRs. Failure changes neither backend binding,
+`ameown`, nor `MS`.
 
 ==== `ame.release`
 
@@ -180,8 +180,8 @@ that preserves `MS`.
 Software saves `ameown.OWNED` with the execution context. Before switching out
 an owner, it saves required AME state and releases the backend.
 
-To restore a saved owner, software enables `MS`, executes `ame.acquire`, and
-waits for success. It then restores any saved AME state and sets `MS` to Clean,
-or retains the initial state and Initial status established by acquisition.
-AME execution resumes only after acquisition succeeds and any required restore
-completes.
+To restore a saved owner, software ensures every applicable `MS` field is
+non-Off, executes `ame.acquire`, and waits for success. It then restores any
+saved AME state and sets `MS` to Clean when the restored state matches its saved
+image. AME execution resumes only after acquisition succeeds and any required
+restore completes.
