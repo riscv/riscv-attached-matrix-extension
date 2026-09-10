@@ -159,7 +159,7 @@ Two requirements on the allocator follow from the fact that `ame.acquire` preser
 * A tag may be reused once no resident context in the domain is bound to it — either because every such context has since been bound to another tag by ordinary allocation, or because the allocator has rebound them itself.
 
 Isolation between software contexts therefore rests on the allocator keeping these two rules, exactly as address-space isolation rests on it keeping `ASID` values distinct among live address spaces and flushing on reuse.
-The allocator has the same tools: a pool sized to the discovered tag width, and a generation or rollover scheme when the pool is exhausted.
+The allocator has the same tools: a pool sized to the discovered tag width, and a generation or rollover scheme when the pool is exhausted (<<ame-software-guidance>>).
 
 [NOTE]
 ====
@@ -327,7 +327,7 @@ The second must reach the hypervisor even when the guest has illegal-instruction
 * Distinct guests shall be given distinct `hametag.TPREFIX` values.
   Deriving the prefix from `hgatp.VMID` gives this for free and ties the tag namespace to the lifetime that already governs guest identity.
 * Writing `hamectx` or `hametag` changes neither the contexts already bound nor the tag bound to any hart; it affects only subsequent executions of `ame.acquire`, `ame.save`, and `ame.restore`.
-  A hypervisor that reassigns a context between guests reclaims it first, as it would between threads.
+  A hypervisor that reassigns a context between guests reclaims it first, as it would between threads (<<ame-software-guidance>>).
 * A hypervisor that moves a virtual hart between physical harts re-establishes the binding on the destination by reading `amectx` and `ametag` at HS level on the source and executing `ame.acquire` with those physical values on the destination; the selection is hart state and does not travel with the guest.
 * The platform description presented to a guest shall report the guest's allotment: `NCTX` equal to `hamectx.CLEN`, and the tag width equal to `GTAGW`.
   A guest that read the physical values would size its AME working set to contexts it cannot reach.
