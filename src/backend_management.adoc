@@ -83,13 +83,14 @@ If any applicable `MS` field is Off, or the hart has no selection (<<ame-hart-bi
 
 * Every AME instruction other than `ame.acquire`, `ame.save`, and `ame.restore` raises an illegal-instruction exception.
   Bound-context state, if any, is unaffected.
-* Every read or write of every AME CSR other than `amectx` and `ametag` raises an illegal-instruction exception.
+* Every read or write of every AME CSR other than `amectx`, `ametag`, `hamectx`, and `hametag` raises an illegal-instruction exception.
 
 `ame.acquire`, `ame.save`, and `ame.restore` execute at supervisor level and above and do not require any applicable `MS` field to be non-Off; they name their context explicitly and therefore operate independently of what the executing hart currently has selected.
 Executing any of them at user level raises an illegal-instruction exception.
+When the hypervisor extension is implemented and `V=1`, they name guest contexts and guest tags, and either translate them or trap to HS-mode, as defined in <<ame-context-virtualization>>.
 
 Every other AME instruction accesses the context selected on the executing hart.
-Hardware compares the context's ownership tag against the hart's bound tag on the access path (<<ame-ownership-tag>>); a mismatch raises an illegal-instruction exception and changes no AME state.
+Hardware compares the context's ownership tag against the hart's bound tag on the access path (<<ame-ownership-tag>>); a mismatch raises an illegal-instruction exception and changes no AME state, or, when `V=1`, a virtual-instruction exception (<<ame-context-virtualization>>).
 
 These exceptions precede all other AME validation and change no AME state.
 
@@ -147,6 +148,7 @@ If AME instructions are issued to one context from more than one hart under the 
 The allocator shall prevent it, and does so for free when a thread runs on one hart at a time.
 
 The tag is a physical name, in one namespace per backend domain.
+Where the hypervisor extension is implemented, a guest writes a guest tag, which hardware widens into a physical one so that the tag namespaces of different guests cannot collide; see <<ame-context-virtualization>>.
 
 The tag namespace is allocated entirely by the allocator.
 Hardware assigns no tags, checks no uniqueness, and reclaims nothing; it compares the values it is given.
@@ -179,7 +181,8 @@ A retirement-time fault would allow a speculative read of another owner's retain
 `ame.acquire`:
 
 * executes at supervisor level and above; at user level it raises an illegal-instruction exception;
-* raises an illegal-instruction exception, and changes no state, if `X[rs2]` names a context that the executing hart cannot reach, or if `X[rs1]` does not fit in the implemented tag width;
+* raises an illegal-instruction exception, and changes no state, if `X[rs2]` names a context that the executing hart cannot reach, or if `X[rs1]` does not fit in the implemented tag width.
+  When `V=1`, the reachable contexts and the admissible tags are those of the guest's window (<<ame-context-virtualization>>);
 * otherwise cannot fail and returns no status.
   If binding requires displacing other state, the allocator performs that eviction in software beforehand; the instruction itself always succeeds;
 * does nothing if `X[rs2]` is already selected on the executing hart and the hart's bound tag equals `X[rs1]`;
@@ -236,7 +239,7 @@ The hint allows the allocator to skip the save, to reclaim the context at no cos
 `ame.save rs1, rs2` transfers the full architectural state of resident context `X[rs2]` to memory at address `X[rs1]`.
 `ame.restore rs1, rs2` transfers it back.
 Both execute at supervisor level and above; at user level they raise an illegal-instruction exception.
-Both raise an illegal-instruction exception, and change no state, if `X[rs2]` names a context that the executing hart cannot reach.
+Both raise an illegal-instruction exception, and change no state, if `X[rs2]` names a context that the executing hart cannot reach — when `V=1`, a context outside the guest's window (<<ame-context-virtualization>>).
 
 Upon completion, both instructions set the named context's state to Clean: its contents are valid and the memory copy is current.
 When the named context is the one selected on the executing hart, the applicable `MS` fields become Clean accordingly.
@@ -254,6 +257,92 @@ The canonical layout is the serialization format for context switch, for migrati
 
 The memory accesses of `ame.save` and `ame.restore` follow the rules of <<ame-common-memory>>.
 
+[[ame-context-virtualization]]
+=== Virtualization
+
+`ame.acquire`, `ame.save`, and `ame.restore` name the context they act on, and `ame.acquire` also names the owner it binds.
+Context numbers and ownership tags are physical names, each in one namespace per backend domain.
+When the hypervisor extension is implemented alongside AME and `V=1`, they are instead *guest* names, translated by hardware through an HS-level window before they are used, so that a guest may number its contexts and tag its threads from zero without being able to reach anything the hypervisor has not granted it.
+
+This is the same construction as two-stage address translation: the guest operates in a namespace of its own, and an HS-level register decides where that namespace lands.
+
+==== Name translation
+
+Let `TAGW` be the implemented ownership-tag width and `GTAGW` the guest ownership-tag width, both reported by the platform description (<<ame-context-discovery>>); `GTAGW` is at most `TAGW`.
+
+When `V=1` and `hstatus.VTAME` is zero, the `rs2` operand of `ame.acquire`, `ame.save`, and `ame.restore` is a guest context number, relocated into the guest's window as
+
+  physical context = hamectx.CBASE + X[rs2]
+
+Each of the three raises an illegal-instruction exception, and changes no state, if `X[rs2]` is not less than `hamectx.CLEN`.
+
+The `rs1` operand of `ame.acquire` is a guest ownership tag, widened into a physical one as
+
+  physical tag = hametag.TPREFIX | X[rs1]
+
+`ame.acquire` raises an illegal-instruction exception, and changes no state, if `X[rs1]` is not less than `2^GTAGW`.
+
+Both are guest errors — the guest has named a context or a thread outside its own allotment — so the exception is delivered under the ordinary delegation rules, to VS-mode, where the guest handles it.
+
+The `rs1` operand of `ame.save` and `ame.restore` is a memory address, not a name, and is translated as any other explicit memory access, through both stages when `V=1` (<<ame-common-memory>>).
+`ame.release`, and every AME instruction that acts on the context selected on the hart, name nothing and are unaffected.
+
+When `V=0` the operands are physical names and no translation occurs.
+`hamectx` and `hametag` have no effect on instructions executed at HS level or above.
+
+The ownership tag compared on the access path (<<ame-ownership-tag>>) is always the physical tag.
+A guest never observes a physical tag or a physical context number.
+
+Reads of `amectx` and `ametag` (<<ame-supervisor-csrs>>) from VS-mode are translated the same way when `hstatus.VTAME` is zero: `amectx.CTX` reports the selection relative to `hamectx.CBASE`, `ametag` reports the low `GTAGW` bits of the bound tag, and `amectx.VALID` reads zero — as though the hart had no selection — whenever the selection lies outside the guest's window or the bound tag's prefix differs from `hametag.TPREFIX`.
+
+==== The `hstatus.VTAME` gate
+
+`hstatus.VTAME` selects between native guest execution and emulation by the hypervisor.
+Bit 23 of `hstatus` is a provisional allocation, adjacent to `VTVM`, `VTW`, and `VTSR`; a future ratified version may assign a different bit.
+
+When `hstatus.VTAME` is one and `V=1`, `ame.acquire`, `ame.save`, and `ame.restore`, and reads of `amectx` and `ametag`, raise a virtual-instruction exception, which is taken to HS-mode.
+The hypervisor may then apply its own admission policy, translate the operands in software, and issue the instruction itself.
+`hstatus.VTAME` has no effect when `V=0`, and no effect on any other AME instruction.
+It resets to one, so that a hypervisor which has not configured AME for its guests intercepts rather than grants.
+
+An implementation may hardwire `hstatus.VTAME` to one and `hamectx.CLEN` to zero.
+Every guest execution of the three instructions then traps to HS-mode, the hypervisor emulates all three, and no name translation is performed in hardware.
+Such an implementation is conforming.
+
+==== Revocation and trap delivery
+
+When `V=1`, an ownership-tag mismatch raises a virtual-instruction exception rather than an illegal-instruction exception.
+
+A mismatch observed by a guest means that the hypervisor has rebound the guest's context to another owner.
+The tag is supervisor state that `ame.acquire` alone writes, and under virtualization the guest's tags are formed from a prefix it cannot read; a guest OS therefore has no way to name, observe, or repair the condition.
+Delivering the trap to HS-mode puts it where it can be handled — the hypervisor restores the context, or re-admits the guest under its own policy, and resumes the guest at the faulting instruction.
+
+The first-use trap follows the two-level `MS` model of <<ame-state-enablement>>: an instruction that is illegal because `vsstatus.MS` is Off raises an illegal-instruction exception, delivered to the guest under the ordinary delegation rules, while one that is illegal because the HS-level `MS` is Off with `vsstatus.MS` non-Off raises a virtual-instruction exception.
+The second must reach the hypervisor even when the guest has illegal-instruction exceptions delegated to it, or the hypervisor could not enable AME for its guests lazily.
+
+==== Requirements on the hypervisor
+
+* The context windows of guests that are concurrently resident on the same backend domain shall not overlap.
+  Hardware does not check this; two guests given overlapping windows can reach each other's contexts, and the separation the tag provides is lost.
+* Distinct guests shall be given distinct `hametag.TPREFIX` values.
+  Deriving the prefix from `hgatp.VMID` gives this for free and ties the tag namespace to the lifetime that already governs guest identity.
+* Writing `hamectx` or `hametag` changes neither the contexts already bound nor the tag bound to any hart; it affects only subsequent executions of `ame.acquire`, `ame.save`, and `ame.restore`.
+  A hypervisor that reassigns a context between guests reclaims it first, as it would between threads.
+* A hypervisor that moves a virtual hart between physical harts re-establishes the binding on the destination by reading `amectx` and `ametag` at HS level on the source and executing `ame.acquire` with those physical values on the destination; the selection is hart state and does not travel with the guest.
+* The platform description presented to a guest shall report the guest's allotment: `NCTX` equal to `hamectx.CLEN`, and the tag width equal to `GTAGW`.
+  A guest that read the physical values would size its AME working set to contexts it cannot reach.
+
+[NOTE]
+====
+The precedent is `vsatp.ASID`, which is implicitly qualified by `hgatp.VMID`: the guest names address spaces in a namespace of its own, and hardware widens the name so that two guests using the same number do not collide.
+The ownership tag is the same kind of object — a name for a schedulable software context — and it is virtualized the same way.
+
+The prefix is held in a CSR rather than taken from `hgatp.VMID` directly, so that the split between prefix and guest bits does not have to track `VMIDLEN`, and so that a hypervisor may partition its tag space by some other rule.
+A hypervisor that wants the `VMID` construction writes it into `TPREFIX`.
+
+`hamectx.CLEN` resetting to zero and `hstatus.VTAME` resetting to one are the two halves of the same safe default: a hypervisor that knows nothing about AME neither grants contexts to its guests nor lets a guest execute a context-management instruction without its knowledge.
+====
+
 [[ame-context-discovery]]
 === Discovery
 
@@ -266,9 +355,12 @@ The platform description shall provide at minimum:
 * the state geometry: the register counts and dimensions of <<state>>, and the total size of the canonical save layout of <<ame-context-save-restore>>;
 * a backend-domain identifier, such that harts sharing a backend carry the same domain.
   This is the basis for allocator topology awareness and for the affinity description;
-* the ownership-tag width.
+* the ownership-tag width;
+* where the hypervisor extension is implemented, the guest ownership-tag width, `GTAGW`, which bounds the tag a guest may write and therefore the number of threads a guest can hold contexts for at once.
 
 The binding of these properties into the device tree and into ACPI tables is defined by the respective platform specifications, not by this document.
+
+The description presented to a guest reports the guest's own allotment, not the physical configuration of the machine; see <<ame-context-virtualization>>.
 
 A backend-utilisation counter SHOULD be provided through the standard performance-counter interface.
 It is the measurement input to allocator placement policy.

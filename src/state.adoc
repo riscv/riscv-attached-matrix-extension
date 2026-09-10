@@ -118,6 +118,7 @@ is specified in
 === Control and status registers (CSRs)
 
 AME adds six CSRs at user level and two read-only CSRs at supervisor level (<<ame-supervisor-csrs>>).
+When the hypervisor extension is implemented alongside AME, it adds two further CSRs at HS level (<<ame-hypervisor-csrs>>).
 
 The addresses below are provisional allocations in the corresponding
 user-level custom read/write and read-only CSR ranges.  A future ratified
@@ -352,6 +353,7 @@ A future ratified version may assign different standard CSR addresses.
 
 Both are readable at supervisor level and above regardless of the value of any `MS` field, since the allocator needs them precisely while AME is disabled.
 Any attempt to write either raises an illegal-instruction exception.
+When `V=1`, both report guest names, or trap to HS-mode, as defined in <<ame-context-virtualization>>.
 
 [#ame:doc:csr:amectx]
 ==== amectx
@@ -398,3 +400,76 @@ The value is meaningful only when `amectx.VALID` is one, and reads as zero other
 | Ownership tag bound to this hart
 
 |===
+
+[[ame-hypervisor-csrs]]
+=== Hypervisor-level control and status registers
+
+When the hypervisor extension is implemented alongside AME, AME adds two HS-level CSRs.
+They describe the window through which a guest's context numbers and ownership tags are translated into physical ones; the translation itself is defined in <<ame-context-virtualization>>.
+Neither CSR exists when the hypervisor extension is not implemented.
+
+The addresses below are provisional allocations in the hypervisor-level custom read/write CSR range.
+A future ratified version may assign different standard CSR addresses.
+
+|===
+| CSR | Address | Description
+
+| <<ame:doc:csr:hamectx,hamectx>>
+| `6C0`
+| Guest AME context window
+
+| <<ame:doc:csr:hametag,hametag>>
+| `6C1`
+| Guest AME ownership-tag prefix
+
+|===
+
+Both are accessible at HS level and above.
+An attempt to access either from VS-mode or VU-mode raises a virtual-instruction exception, and an attempt from U-mode raises an illegal-instruction exception, as for every other hypervisor-level CSR.
+
+[#ame:doc:csr:hamectx]
+==== hamectx
+
+`hamectx` defines the range of resident contexts that the current guest may name.
+Guest context number zero corresponds to physical context `CBASE`, and a guest context number is valid only when it is less than `CLEN`.
+
+|===
+| Field | Location | Description
+
+| CBASE
+| `15:0`
+| Physical context number corresponding to guest context zero
+
+| CLEN
+| `31:16`
+| Number of contexts in the guest's window.
+  Zero means the guest has no contexts, and every guest use of a context number is then out of window.
+
+| RESERVED
+| `XLEN-1:32`
+| WPRI, reads as zero
+
+|===
+
+Both fields are WARL.
+An implementation that does not support native guest execution of the context-management instructions may hardwire `CLEN` to zero; see <<ame-context-virtualization>>.
+The CSR resets with `CLEN` zero, so that a hypervisor which has not configured a window grants no contexts to its guests.
+
+[#ame:doc:csr:hametag]
+==== hametag
+
+`hametag` supplies the high-order bits of the ownership tag written on behalf of the current guest.
+The guest supplies the low-order `GTAGW` bits, where `GTAGW` is the guest ownership-tag width reported by the platform description (<<ame-context-discovery>>).
+
+|===
+| Field | Location | Description
+
+| TPREFIX
+| `XLEN-1:0`
+| High-order bits of the physical ownership tag.
+  WARL: the low `GTAGW` bits read as zero, and bits at or above the implemented tag width read as zero.
+
+|===
+
+The CSR resets to zero.
+Distinct guests are given distinct prefixes, so that their tag namespaces do not overlap; see <<ame-context-virtualization>>.

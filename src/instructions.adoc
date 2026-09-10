@@ -406,6 +406,7 @@ Otherwise it retires only after every AME instruction previously issued to the c
 Binding a tag that differs from the context's current tag leaves the context Initial; binding the tag it already holds preserves the contents.
 +
 `ame.acquire` does not write `MS`; see <<ame-context-acquire>> for the complete definition, including the per-hart binding rules for a shared backend.
+When `V=1`, `rs2` and `rs1` carry guest names that are translated through the guest's window, or the instruction traps to HS-mode (<<ame-context-virtualization>>).
 
 Operation::
 +
@@ -476,6 +477,7 @@ Reads the canonical save layout at address `X[rs1]` into resident context `X[rs2
 The named context need not be the one selected on the executing hart.
 Registers marked invalid in the layout header are reinstated as reads-as-zero.
 The instruction executes at supervisor level and above; see <<ame-context-save-restore>>.
+When `V=1`, `rs2` carries a guest context number (<<ame-context-virtualization>>).
 
 Operation::
 +
@@ -509,6 +511,7 @@ Writes resident context `X[rs2]` to memory at address `X[rs1]` in the canonical 
 The named context need not be the one selected on the executing hart.
 Registers whose validity bit is clear may be skipped, with only the layout header recording their state.
 The instruction executes at supervisor level and above; see <<ame-context-save-restore>>.
+When `V=1`, `rs2` carries a guest context number (<<ame-context-virtualization>>).
 
 Operation::
 +
