@@ -117,7 +117,8 @@ is specified in
 
 === Control and status registers (CSRs)
 
-AME adds seven CSRs.
+AME adds six CSRs at user level and two read-only CSRs at supervisor level (<<ame-supervisor-csrs>>).
+When the hypervisor extension is implemented alongside AME, it adds two further CSRs at HS level (<<ame-hypervisor-csrs>>).
 
 The addresses below are provisional allocations in the corresponding
 user-level custom read/write and read-only CSR ranges.  A future ratified
@@ -138,16 +139,12 @@ version may assign different standard CSR addresses.
 | `CC2`
 | Datatype of data scalar operands supplied in `X` registers
 
-| <<ame:doc:csr:ameown,ameown>>
-| `CC3`
-| Ownership of the AME backend
-
 | <<ame:doc:csr:amefflags,amefflags>>
-| `CC4`
+| `CC3`
 | Accrued AME floating-point exception flags
 
 | <<ame:doc:csr:amexsat,amexsat>>
-| `CC5`
+| `CC4`
 | AME fixed-point saturation flag
 
 | <<ame:doc:csr:amestatus,amestatus>>
@@ -156,34 +153,8 @@ version may assign different standard CSR addresses.
 
 |===
 
-`amestype` and `amestatus` are backend context state. `amenlen` and
-`ameudsz` report implementation capabilities. `ameown` reports ownership.
-
-[#ame:doc:csr:ameown]
-==== ameown
-
-`ameown` is a read-only CSR that reports whether the current software execution
-context owns the entire AME backend. It may be read when every applicable `MS`
-field is non-Off, regardless of ownership. Any CSR instruction that attempts
-to write `ameown` raises an illegal-instruction exception.
-
-|===
-| Field | Location | Description
-
-| OWNED
-| `0`
-| One when the current context owns the backend; zero otherwise
-
-| RESERVED
-| `XLEN-1:1`
-| Reads as zero
-
-|===
-
-`ameown.OWNED` is set when `ame.acquire` newly grants ownership and cleared by
-`ame.release`. A failed acquire does not change it. It resets to zero.
-The save-and-restore protocol for this field is defined in
-<<ame-backend-context-switch>>.
+`amestype`, `amefflags`, `amexsat`, and `amestatus` are AME context state: they belong to the bound context and are part of the canonical save layout of <<ame-context-save-restore>>.
+`amenlen` and `ameudsz` report implementation capabilities.
 
 [#ame:doc:csr:amestype]
 ==== amestype
@@ -200,7 +171,7 @@ This CSR does not apply to fixed-type control scalars.  Shift amounts,
 indices, offsets, and other instruction-defined control values retain their
 fixed integer semantics and do not read this CSR.
 
-The CSR resets to zero. It is backend context state and must be saved and
+The CSR resets to zero. It is AME context state and must be saved and
 restored with the AME state when software changes execution context.
 
 |===
@@ -280,9 +251,9 @@ atomically with the instruction's destination writes; an instruction that
 raises a synchronous exception does not update `amefflags`.  Reserved bits are
 WPRI and read as zero.
 
-The CSR resets to zero.  It is hart state and must be saved and restored with
-the AME state when software changes execution context.  AME operations do not
-modify the `fflags` CSR of the F extension.
+The CSR resets to zero.  It is AME context state and must be saved and
+restored with the AME state when software changes execution context.  AME
+operations do not modify the `fflags` CSR of the F extension.
 
 |===
 | Field | Location | Description
@@ -323,8 +294,8 @@ atomically with the instruction's destination writes; an instruction that
 raises a synchronous exception does not update `amexsat`.  Reserved bits are
 WPRI and read as zero.
 
-The CSR resets to zero.  It is hart state and must be saved and restored with
-the AME state when software changes execution context.
+The CSR resets to zero.  It is AME context state and must be saved and
+restored with the AME state when software changes execution context.
 
 |===
 | Field | Location | Description
@@ -340,7 +311,7 @@ clamps its output to the destination datatype's range.
 ==== amestatus
 
 [#ame:doc:csr_field:amestatus:UN]
-`amestatus` is backend context state and reports sticky AME execution status.
+`amestatus` is AME context state and reports sticky AME execution status.
 It resets to zero. Software
 clears a reported condition by writing zero to the corresponding bit; writing
 one leaves that bit set.  Reserved bits are WPRI and read as zero.
@@ -357,3 +328,148 @@ other architectural state change in that case.  `UN` remains set until
 software clears it.
 
 |===
+
+[[ame-supervisor-csrs]]
+=== Supervisor-level control and status registers
+
+AME adds two read-only CSRs at supervisor level.
+They expose the hart's binding state of <<ame-hart-binding>> — which context the hart has selected and under which ownership tag — so that an allocator can verify its own bookkeeping, detect that a context was reclaimed from under a thread, and carry a binding across harts.
+
+The addresses below are provisional allocations in the supervisor-level custom read-only CSR range.
+A future ratified version may assign different standard CSR addresses.
+
+|===
+| CSR | Address | Description
+
+| <<ame:doc:csr:amectx,amectx>>
+| `DC0`
+| Context selected on this hart
+
+| <<ame:doc:csr:ametag,ametag>>
+| `DC1`
+| Ownership tag bound to this hart
+
+|===
+
+Both are readable at supervisor level and above regardless of the value of any `MS` field, since the allocator needs them precisely while AME is disabled.
+Any attempt to write either raises an illegal-instruction exception.
+When `V=1`, both report guest names, or trap to HS-mode, as defined in <<ame-context-virtualization>>.
+
+[#ame:doc:csr:amectx]
+==== amectx
+
+`amectx` reports the hart's current selection.
+
+|===
+| Field | Location | Description
+
+| CTX
+| `15:0`
+| Number of the context selected on this hart.
+  Reads as zero when `VALID` is zero.
+
+| VALID
+| `16`
+| One when this hart has a context selected; zero after reset and whenever no selection exists.
+
+| MATCH
+| `17`
+| One when `VALID` is one and the selected context's ownership tag equals the tag bound to this hart — that is, the hart still owns the context it selected.
+  Zero when the context has since been bound to another owner.
+
+| RESERVED
+| `XLEN-1:18`
+| Reads as zero
+
+|===
+
+`MATCH` answers the allocator's switch-in question: whether a thread's retained context is still its own, or was reclaimed while it was descheduled.
+
+[#ame:doc:csr:ametag]
+==== ametag
+
+`ametag` reports the ownership tag bound to this hart by the most recent `ame.acquire`.
+Bits at or above the implemented tag width read as zero.
+The value is meaningful only when `amectx.VALID` is one, and reads as zero otherwise.
+
+|===
+| Field | Location | Description
+
+| TAG
+| `XLEN-1:0`
+| Ownership tag bound to this hart
+
+|===
+
+[[ame-hypervisor-csrs]]
+=== Hypervisor-level control and status registers
+
+When the hypervisor extension is implemented alongside AME, AME adds two HS-level CSRs.
+They describe the window through which a guest's context numbers and ownership tags are translated into physical ones; the translation itself is defined in <<ame-context-virtualization>>.
+Neither CSR exists when the hypervisor extension is not implemented.
+
+The addresses below are provisional allocations in the hypervisor-level custom read/write CSR range.
+A future ratified version may assign different standard CSR addresses.
+
+|===
+| CSR | Address | Description
+
+| <<ame:doc:csr:hamectx,hamectx>>
+| `6C0`
+| Guest AME context window
+
+| <<ame:doc:csr:hametag,hametag>>
+| `6C1`
+| Guest AME ownership-tag prefix
+
+|===
+
+Both are accessible at HS level and above.
+An attempt to access either from VS-mode or VU-mode raises a virtual-instruction exception, and an attempt from U-mode raises an illegal-instruction exception, as for every other hypervisor-level CSR.
+
+[#ame:doc:csr:hamectx]
+==== hamectx
+
+`hamectx` defines the range of resident contexts that the current guest may name.
+Guest context number zero corresponds to physical context `CBASE`, and a guest context number is valid only when it is less than `CLEN`.
+
+|===
+| Field | Location | Description
+
+| CBASE
+| `15:0`
+| Physical context number corresponding to guest context zero
+
+| CLEN
+| `31:16`
+| Number of contexts in the guest's window.
+  Zero means the guest has no contexts, and every guest use of a context number is then out of window.
+
+| RESERVED
+| `XLEN-1:32`
+| WPRI, reads as zero
+
+|===
+
+Both fields are WARL.
+An implementation that does not support native guest execution of the context-management instructions may hardwire `CLEN` to zero; see <<ame-context-virtualization>>.
+The CSR resets with `CLEN` zero, so that a hypervisor which has not configured a window grants no contexts to its guests.
+
+[#ame:doc:csr:hametag]
+==== hametag
+
+`hametag` supplies the high-order bits of the ownership tag written on behalf of the current guest.
+The guest supplies the low-order `GTAGW` bits, where `GTAGW` is the guest ownership-tag width reported by the platform description (<<ame-context-discovery>>).
+
+|===
+| Field | Location | Description
+
+| TPREFIX
+| `XLEN-1:0`
+| High-order bits of the physical ownership tag.
+  WARL: the low `GTAGW` bits read as zero, and bits at or above the implemented tag width read as zero.
+
+|===
+
+The CSR resets to zero.
+Distinct guests are given distinct prefixes, so that their tag namespaces do not overlap; see <<ame-context-virtualization>>.

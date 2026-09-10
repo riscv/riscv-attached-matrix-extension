@@ -1,0 +1,161 @@
+[appendix]
+[[ame-software-guidance]]
+== Software guidance (non-normative)
+
+This appendix describes the intended use of <<shared-ame-backend>> by an allocator.
+Nothing in it is required by the architecture.
+An allocator may treat any implementation as though `NCTX` were one and perform a full save and restore on every context switch; correctness is unaffected, only performance.
+
+=== Enablement
+
+Two paths coexist:
+
+Declared::
+The binary carries a psABI or ELF flag.
+The allocator enables AME at `exec`, allocates the save area, and sizes signal frames before the thread runs, so that an allocation failure is reportable at a point where it can be handled.
+
+First use::
+`MS` is Off, and the first AME instruction traps.
+The handler applies its admission policy, allocates the save area, executes `ame.acquire`, sets `MS`, and resumes — or refuses, for example by delivering `SIGILL`, under a strict policy.
+
+=== Context switch
+
+One reasonable policy, organised by the outgoing thread's `MS`:
+
+[cols="2,3,3,3", options="header"]
+|===
+| Outgoing `MS` | Incoming: non-AME thread | Incoming: different AME thread | Same thread returns
+
+| Off or Initial
+| Disable; nothing to save.
+  Mark the thread's save area *empty*.
+| `ame.acquire` with the new tag, which leaves the context Initial; `ame.restore` unless the save area is empty; enable.
+| `amectx.MATCH` set: re-enable.
+
+| Clean
+| Disable and retain the registers; the tag stays with the outgoing owner.
+| No save is needed; `ame.acquire`; `ame.restore`; enable.
+| `amectx.MATCH` set: re-enable, with no memory traffic.
+
+| Dirty
+| Disable, retain, and defer the save; the tag stays with the outgoing owner.
+| `ame.save` under the recorded owner; `ame.acquire`; `ame.restore`; enable.
+| `amectx.MATCH` set: re-enable, and the save never happens.
+|===
+
+In every "same thread returns" cell, a clear `amectx.MATCH` means the context was reclaimed while the thread was descheduled; the thread is then treated as an incoming different thread.
+The reclaimer saved the context if it had to, so the save area is current.
+
+The `ame.acquire` in each transfer cell provides both the drain and the clearing to Initial; no separate zeroing pass is required.
+The deferred save in the Dirty row is policy, not architecture: a hardened system saves eagerly on every switch, while an energy-constrained one defers.
+
+An outgoing `MS` of Initial has two causes: the thread has never written its state, or it executed `ame.release`.
+The allocator cannot tell them apart and need not — in both cases the save area's previous contents are stale, and restoring them would hand the thread data it discarded in place of the zeros it expects.
+This is why the Initial row marks the save area empty rather than merely skipping the save.
+
+=== Eviction across harts
+
+To reclaim a context that is live on another hart, the allocator sends an IPI to the owning hart.
+That hart's handler disables AME and executes `ame.save` for the named context; the requesting hart then proceeds with `ame.acquire` and `ame.restore`.
+Every term — the IPI, the save, the restore — is bounded.
+The displaced thread discovers the loss at its next AME access, which traps by tag mismatch and re-enters the allocator as an ordinary re-admission; the allocator sees the same fact as a clear `amectx.MATCH` when it next considers the thread.
+If the victim context is not live on any hart, no IPI is needed: the allocator spills the named context directly.
+
+Two properties of victim selection matter for any sound policy.
+
+*Priority order is observed.*
+A context is reclaimed only on behalf of a thread of higher scheduling priority than the victim's owner, or from an owner that is descheduled or has released its context; reserved contexts are never victims.
+Otherwise eviction itself becomes a priority-inversion channel — the failure this design exists to prevent.
+
+*Circular eviction is precluded by a minimum residency.*
+When the number of concurrently running AME threads in a backend domain exceeds `NCTX`, fault-driven eviction between equal-priority peers would ping-pong at fault frequency, each grant immediately reclaimed by the displaced thread's next AME access.
+The allocator therefore grants a context a minimum residency — for example, a context bound to a running thread is not reclaimed for an equal-priority peer before a scheduling quantum has elapsed — so that equal-priority oversubscription degrades to time-multiplexing at quantum granularity rather than to thrashing at fault granularity.
+This is the same principle by which page reclaim protects a working set and by which load balancing avoids task ping-pong.
+
+=== Managing the tag pool
+
+The allocator owns the tag namespace of each backend domain (<<ame-ownership-tag>>) and has to keep two things true: no two live software contexts share a tag, and a tag is not reused while a resident context is still bound to its previous holder.
+The discipline is the one already used for `ASID` values, and the same designs carry over.
+
+*Allocation.*
+Assign a tag at enablement, from a per-domain pool of `2^TAGW` values, and record it with the thread.
+A thread that may run in several domains is simplest to handle with one tag that is unique across all of them, so that migration between domains needs no re-tagging.
+The reset state of every context is unbound and matches nothing, so no tag value needs to be reserved as a null; an allocator may still find it convenient to reserve one value for contexts it parks under its own ownership.
+
+*Release of a tag.*
+When a thread exits, its tag remains bound to whatever contexts it held.
+Those contexts are harmless — a new thread acquiring one with a fresh tag gets it cleared — but the tag itself is not free until each of them has been rebound.
+Two policies work: track, per tag, the contexts bound to it, and free the tag when the count reaches zero through ordinary reallocation; or do nothing until the pool runs out.
+
+*Rollover.*
+When the pool is exhausted, the allocator starts a new generation: it rebinds every resident context in the domain that is not currently held by a running thread — `ame.acquire` with an allocator-owned tag is enough, and clears the context in the process — and then hands out the old values again.
+Threads that are running keep their tags across the rollover and are simply excluded from the reissue, as with an `ASID` rollover that flushes the TLB but leaves the current address space in place.
+A generation counter folded into the tag makes the "is this tag from the current generation?" test a comparison rather than a lookup.
+
+*Under a hypervisor.*
+The hypervisor manages a pool of `hametag.TPREFIX` values, one per guest, and each guest manages its own pool of `2^GTAGW` guest tags below it.
+Reusing a prefix for a new guest requires the same condition as reusing a tag: every context in the old guest's window must have been rebound, which the hypervisor does anyway when it reclaims the window.
+The guest's `GTAGW` bounds how many threads it can hold contexts for at once, so a guest allocator applies the rollover scheme above within its own width.
+
+=== Several AME threads in one address space
+
+A common pattern is a producer/consumer or multi-stage pipeline inside a single process, where several threads use AME concurrently.
+The mechanism supports this directly, because tags name threads rather than address spaces (<<ame-ownership-tag>>):
+
+* *Contexts are disjoint by construction.*
+  Each stage's thread receives its own tag at enablement, and the access-path check makes each context unreachable from every other stage, address-space sharing notwithstanding.
+  No software convention is needed to keep stages from corrupting each other's registers.
+* *Data flows through memory, not through registers.*
+  There is no architectural channel between contexts: a producer stores its results and the consumer loads them, with inter-thread ordering provided by the ordinary memory model and synchronization.
+  AME state remains thread-private, which is what makes AME code composable across libraries and threads.
+* *A stage that has handed off its results should release.*
+  After storing its results, a stage executes `ame.release`, or clears the produced registers with `mzero.2d.m` and `mzero.2d.acc`.
+  Its context drops to Initial, its save cost disappears, and where contexts are shared the context becomes reclaimable at no cost.
+
+By topology:
+
+1:1::
+Each stage running on its own hart has a private context, so non-overlap is trivial.
+Stages that time-share one hart are handled by the ordinary switch policy above, with distinct tags and either save/restore or retention.
+
+1:N::
+Stages that time-share one hart may each hold a resident context.
+A stage switch is then an `ame.acquire` selecting the other context: the drain applies, but there is no memory traffic.
+Banked implementations are the natural fit for pipelines multiplexed onto few harts.
+
+M:N::
+Stages on different harts of one backend domain occupy distinct contexts and issue concurrently.
+Isolation is by tag, and contention is resolved at the backend's issue arbitration (<<ame-context-acquire>>).
+If the number of concurrently running AME stages exceeds `NCTX` for the domain, the allocator multiplexes contexts: correctness is unaffected, throughput degrades.
+A pipeline runtime should therefore query `NCTX`, which the allocator exposes from the platform description (<<ame-context-discovery>>), and either size its concurrent AME stages to it, request reserved contexts for latency-critical stages, or ask the allocator to place stages across backend domains.
+
+=== Reserved contexts for real-time and mixed criticality
+
+A context that is bound once at partition startup, or by offline configuration, and never rebound has a constant switch cost of enable and disable alone, no save or restore traffic, and timing that is independent of all other activity by construction.
+Admission control — which must be able to fail at configuration time, never inside a control loop — enforces that the AME working set on a hart does not exceed `NCTX`.
+
+=== Hypervisors
+
+A hypervisor is an allocator whose clients are guests rather than threads, and it has one extra decision to make: whether its guests run the context-management instructions natively or by emulation (<<ame-context-virtualization>>).
+
+*Native, with a granted window.*
+The hypervisor allocates each guest a contiguous range of contexts, writes `hamectx` and a distinct `hametag` prefix on every entry to that guest, and clears `hstatus.VTAME`.
+The guest then binds and switches its own contexts at full speed, applying its own policy over its share.
+This is the configuration that matters on a banked implementation, where a guest thread switch is a selector write and an HS trap on every switch would discard the entire benefit.
+The window is part of the guest's context and is restored with the rest of it.
+
+*Emulated.*
+The hypervisor sets `hstatus.VTAME` and services each guest bind from HS-mode.
+This is the right choice when contexts are oversubscribed across guests, because the hypervisor has to run its own admission and eviction policy on every bind anyway, and the trap it would otherwise have to provoke is already there.
+
+*Neither.*
+A guest that is given a context permanently — a partitioned or real-time guest, or any guest on an implementation with one context per hart — never executes `ame.acquire`, `ame.save`, or `ame.restore` at all.
+It enables `vsstatus.MS` and switches its own threads with ordinary instructions: `mss.1r` and `mls.1r` for the M registers, `mmov.m.a` and `mmov.a.m` staging each accumulator through a spare M register, and ordinary CSR accesses for `amestype`, `amefflags`, `amexsat`, and `amestatus`.
+Such a guest pays no trap and needs no window; it forgoes only the validity-bitmap skipping that `ame.save` performs, since the bitmap is not visible to it.
+
+A hypervisor that reclaims a context from a guest should expect the guest's next AME access to raise a virtual-instruction exception, and should treat it as a re-admission request for that guest exactly as an operating system treats the equivalent fault from a thread.
+
+=== Allocator diversity
+
+The allocator role may be filled by a general-purpose operating system, by an RTOS or static build-time configuration on bare metal, by a hypervisor over the mechanism of the preceding section, or by a device driver or firmware scheduler for an accelerator-hosted implementation, which switches client contexts exactly as a kernel switches threads.
+The normative mechanism is identical in all cases.

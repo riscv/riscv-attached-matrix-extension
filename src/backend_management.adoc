@@ -1,187 +1,366 @@
 [[shared-ame-backend]]
-== AME Backend Ownership and Context Management
+== AME Context Management
 
-=== Backend model
+[[ame-context-topologies]]
+=== Contexts, backends, and topologies
 
-An AME backend contains the execution resources and architectural context
-state. It may be shared by multiple harts. Base AME exposes the entire backend
-as one indivisible ownership unit, held by at most one software execution
-context. Implementations may instead provide a dedicated backend to a hart.
+An AME *backend* contains the execution resources of one or more AME *contexts*.
+A context holds one complete copy of the AME architectural state described in <<state>>.
+A backend may be reachable from a single hart or from several harts.
+
+Implementations differ in how contexts relate to harts.
+This chapter defines one mechanism that serves all of these topologies; the topologies differ only in the policy applied by system software.
+
+.AME context topologies
+[cols="1,2,4,3", options="header"]
+|===
+| Topology | Contexts : Harts | Description | Typical use
+
+| 1:1
+| one private context per hart
+| Each hart has its own AME state and, typically, its own backend.
+  No sharing arises; context management reduces to per-thread state handling.
+| Application processors, servers, DSPs
+
+| 1:N
+| N resident contexts on one hart
+| A banked register file: several AME contexts are simultaneously resident and one is selected for execution.
+  Switching contexts is a selector write, not a save and restore.
+| Context-switch acceleration; reserved contexts for real-time and mixed-criticality partitions
+
+| M:N
+| N contexts shared by M harts
+| One or more backends, each holding a set of resident contexts reachable from a group of harts.
+  System software assigns contexts to threads and multiplexes them when oversubscribed.
+| Shared large matrix units (edge, mobile, datacenter); accelerator-hosted and firmware-scheduled engines
+|===
+
+All three are conforming configurations of the mechanism defined here.
+An implementation reports its configuration through the discovery interface of <<ame-context-discovery>>; software written against this chapter runs unmodified on all of them.
+
+Contexts are numbered within a backend domain.
+Every hart that reaches a domain names that domain's contexts `0` to `NCTX - 1`, in one numbering shared by all harts of the domain; harts in different domains may use the same number for different contexts.
+A context number is meaningful only together with the domain of the hart that uses it, and the allocator keeps its bookkeeping per domain.
+
+[[ame-context-hw-sw-split]]
+=== The hardware/software split
+
+The architecture provides *mechanism* only.
+All allocation, admission, scheduling, fairness, and eviction *policy* resides in system software, here called the *allocator*.
+The allocator may be an operating system, an RTOS, a hypervisor, a device driver, boot-time configuration, or a firmware scheduler; the mechanism makes no assumption about which.
+
+Hardware provides:
+
+* a per-hart state field, `MS`, tracking whether AME state is enabled and whether it is dirty (<<ame-state-enablement>>);
+* per-hart *binding state* — the selected context and the bound tag — written by the allocator and readable by it (<<ame-hart-binding>>);
+* a per-context *ownership tag*, written only by the allocator and checked by hardware on the access path of every AME instruction (<<ame-ownership-tag>>);
+* save and restore access to any resident context from privileged code (<<ame-context-save-restore>>);
+* an implicit drain at every ownership transfer (<<ame-context-acquire>>), so that the instruction streams of different owners are never interleaved at a shared backend;
+* discovery of the context count, state geometry, and backend topology (<<ame-context-discovery>>).
+
+Software provides: when contexts are allocated, to whom, for how long, and which thread's state occupies a context at any time.
+
+Two rules make one mechanism span the whole design space.
+
+[[ame-rule-tolerate-trap]]
+*Rule 1: tolerate, never require, the first-use trap.*
+Software shall tolerate a trap on its first AME instruction, taken because `MS` is Off.
+An implementation may be built such that this trap never occurs, with AME state permanently enabled and a context permanently bound; such an implementation is conforming.
+A minimal implementation therefore needs no first-use handler, while a large system obtains a memory footprint proportional to the number of actual AME users.
+
+[[ame-rule-allocator-isolation]]
+*Rule 2: isolation is the allocator's duty.*
+Isolation between contexts shall never depend on unprivileged software behaving correctly.
+The clearing of state at an ownership transfer is performed by hardware and the allocator (<<ame-context-acquire>>); it is never entrusted to `ame.release`.
 
 [#ame-common-state-access]
-=== State enablement and ownership access rules
+=== State enablement and access rules
 
-[[ame-backend-ownership]]
-Every applicable `MS` field must be non-Off before the current context can
-access an AME backend; <<ame-state-enablement>> defines the applicable fields
-and their encodings.
+<<ame-state-enablement>> defines the applicable `MS` fields and their encodings.
+A non-Off `MS` implies that a context is bound to the hart, because the allocator binds a context before it enables AME state.
 
-[[ame-backend-ms]]
-A non-Off `MS` value enables AME state but does not grant ownership. The
-read-only `ameown.OWNED` field reports whether the current context owns the
-backend. `ame.acquire` requests ownership and `ame.release` relinquishes it;
-<<ame-backend-management-operators>> defines their semantics.
+If any applicable `MS` field is Off, or the hart has no selection (<<ame-hart-binding>>):
 
-If any applicable `MS` field is Off:
+* Every AME instruction other than `ame.acquire`, `ame.save`, and `ame.restore` raises an illegal-instruction exception.
+  Bound-context state, if any, is unaffected.
+* Every read or write of every AME CSR other than `amectx`, `ametag`, `hamectx`, and `hametag` raises an illegal-instruction exception.
 
-* Every AME instruction raises an illegal-instruction exception, including
-  `ame.acquire` and `ame.release`.
-* Every read or write of every AME CSR raises an illegal-instruction exception,
-  including a read of `ameown`.
+`ame.acquire`, `ame.save`, and `ame.restore` execute at supervisor level and above and do not require any applicable `MS` field to be non-Off; they name their context explicitly and therefore operate independently of what the executing hart currently has selected.
+Executing any of them at user level raises an illegal-instruction exception.
+When the hypervisor extension is implemented and `V=1`, they name guest contexts and guest tags, and either translate them or trap to HS-mode, as defined in <<ame-context-virtualization>>.
 
-If every applicable `MS` field is non-Off but `ameown.OWNED=0`:
-
-* Every AME instruction other than `ame.acquire` and `ame.release` raises an
-  illegal-instruction exception.
-* Every access to a writable AME context CSR raises an illegal-instruction
-  exception.
-* Read-only capability CSRs and `ameown` may be read.
+Every other AME instruction accesses the context selected on the executing hart.
+Hardware compares the context's ownership tag against the hart's bound tag on the access path (<<ame-ownership-tag>>); a mismatch raises an illegal-instruction exception and changes no AME state, or, when `V=1`, a virtual-instruction exception (<<ame-context-virtualization>>).
 
 These exceptions precede all other AME validation and change no AME state.
 
-If `ameown.OWNED=1`, a CSR instruction that attempts to set any applicable
-`MS` field to Off raises an illegal-instruction exception and changes no state.
-No implicit release occurs; software must execute `ame.release` first.
+The Off check, the no-selection check, and the tag check are all applied on the access path.
+An instruction that fails any of them shall not read or forward the selected context's data, including speculatively.
+The requirement is not confined to the tag check because lazy switching leaves a descheduled thread's context selected on the hart with the hart's bound tag still matching: for the thread that runs next, `MS` Off is the only thing between it and the retained state.
+
+Setting an applicable `MS` field to Off is permitted in every state and does not disturb the bound context: the context, its ownership tag, and its contents are retained, and become observable again when `MS` is next set non-Off on a hart that has that context selected.
+
+[NOTE]
+====
+Off is hart state, so disabling AME is always legal and always cheap.
+This is what makes lazy context switching safe: the allocator may deschedule a thread by writing `MS` to Off alone, leaving the state in place and the save outstanding, and no further AME instruction of that thread can observe or modify the retained state until the allocator re-enables it.
+
+An implementation is encouraged to report the Off trap and the tag-mismatch trap with distinguishable causes, so that the handler need not decode the faulting instruction to tell an enablement fault from a revoked context.
+In any case the handler can read `amectx.MATCH` (<<ame-supervisor-csrs>>) to tell them apart.
+====
+
+[[ame-hart-binding]]
+=== Hart binding state
+
+Every hart carries two items of binding state, written only by `ame.acquire` and reported by the read-only CSRs `amectx` and `ametag` (<<ame-supervisor-csrs>>):
+
+* its *selection* — the context, if any, on which the hart's AME instructions operate;
+* its *bound tag* — the ownership tag under which they operate.
+
+At reset a hart has no selection.
+Writing `MS` to Off does not clear the selection: the binding persists until the next `ame.acquire` on that hart, which is what allows a descheduled thread's state to be left in place and found again.
+The selection and the bound tag are hart state, not context state; they are not part of any context and are not carried by `ame.save`.
+
+Every resident context carries its own ownership tag (<<ame-ownership-tag>>).
+At reset every context is *unbound*: it matches no hart's bound tag until an `ame.acquire` binds it.
+A context that was bound and is then bound to another tag likewise no longer matches the hart that held it, which is how that hart discovers the reclamation.
+
+A hart whose `MS` is non-Off but which has no selection has nothing to operate on; every AME instruction that would access the selected context raises an illegal-instruction exception, and the exception is subject to the same access-path requirement as the Off check (<<ame-common-state-access>>).
+
+[[ame-ownership-tag]]
+=== The ownership tag
+
+Every resident context carries an ownership tag of implementation-defined width, reported through the platform description (<<ame-context-discovery>>).
+The tag identifies a *schedulable software context* — typically a thread — and not an address space.
+Threads that share an address space are assigned distinct tags, and their contexts are therefore non-overlapping by hardware enforcement, independently of memory translation.
+
+The tag:
+
+* is written only by `ame.acquire` (<<ame-context-acquire>>), which executes at supervisor level and above;
+* is compared by hardware on the access path of every AME instruction against the tag bound to the executing hart.
+  A mismatch shall prevent the context's data from being read or forwarded, *including speculatively*.
+
+The check holds regardless of how many harts have the context selected.
+Selection is per-hart state that persists while `MS` is Off (<<ame-hart-binding>>), so a context reclaimed from a descheduled thread stays selected on that thread's hart, and the thread's next access — or the allocator's read of `amectx.MATCH` — discovers the reclamation.
+
+What the architecture leaves undefined is concurrent *execution*.
+If AME instructions are issued to one context from more than one hart under the same tag, that context's contents and its `MS` are UNPREDICTABLE; no other context is affected, and the access-path checks continue to hold.
+The allocator shall prevent it, and does so for free when a thread runs on one hart at a time.
+
+The tag is a physical name, in one namespace per backend domain.
+Where the hypervisor extension is implemented, a guest writes a guest tag, which hardware widens into a physical one so that the tag namespaces of different guests cannot collide; see <<ame-context-virtualization>>.
+
+The tag namespace is allocated entirely by the allocator.
+Hardware assigns no tags, checks no uniqueness, and reclaims nothing; it compares the values it is given.
+Two requirements on the allocator follow from the fact that `ame.acquire` preserves a context's contents when the tag it binds is the one the context already holds (<<ame-context-acquire>>):
+
+* A tag shall identify one software context at a time.
+  It shall not be assigned to a second software context while any resident context in the domain remains bound to it under the first, since the second's `ame.acquire` of that context would then preserve, rather than clear, the first's state.
+* A tag may be reused once no resident context in the domain is bound to it — either because every such context has since been bound to another tag by ordinary allocation, or because the allocator has rebound them itself.
+
+Isolation between software contexts therefore rests on the allocator keeping these two rules, exactly as address-space isolation rests on it keeping `ASID` values distinct among live address spaces and flushing on reuse.
+The allocator has the same tools: a pool sized to the discovered tag width, and a generation or rollover scheme when the pool is exhausted (<<ame-software-guidance>>).
+
+[NOTE]
+====
+The tag names the thread, not the address space.
+This is the opposite choice from `ASID`/`PCID`, and it is what allows several threads of one process — the stages of a pipeline, for example — to hold AME state concurrently without any software convention to keep them from corrupting each other.
+
+The check is required on the access path rather than at retirement.
+A retirement-time fault would allow a speculative read of another owner's retained state; see the LazyFP class of vulnerability (CVE-2018-3665), which arose precisely from a deferred fault on lazily switched floating-point state.
+====
 
 [[ame-backend-management-operators]]
-=== Backend management instructions
+=== Context management instructions
 
+[[ame-context-acquire]]
 ==== `ame.acquire`
 
-`ame.acquire rd, rs1` atomically requests the entire backend. Every applicable
-`MS` field must be non-Off; otherwise, the instruction raises an
-illegal-instruction exception.
+`ame.acquire rs1, rs2` binds resident context `X[rs2]` to the ownership tag `X[rs1]` and selects that context for the executing hart.
 
-<<<
+`ame.acquire`:
 
-`rs1` contains the acquisition descriptor:
+* executes at supervisor level and above; at user level it raises an illegal-instruction exception;
+* raises an illegal-instruction exception, and changes no state, if `X[rs2]` names a context that the executing hart cannot reach, or if `X[rs1]` does not fit in the implemented tag width.
+  When `V=1`, the reachable contexts and the admissible tags are those of the guest's window (<<ame-context-virtualization>>);
+* otherwise cannot fail and returns no status.
+  If binding requires displacing other state, the allocator performs that eviction in software beforehand; the instruction itself always succeeds;
+* does nothing if `X[rs2]` is already selected on the executing hart and the hart's bound tag equals `X[rs1]`;
+* otherwise retires only after every AME instruction previously issued to context `X[rs2]`, from any hart, has completed at the backend, or is otherwise guaranteed to be ordered before any AME instruction issued to that context after the binding;
+* upon retirement, has bound `X[rs2]` to tag `X[rs1]` and selected it on the executing hart.
+  If `X[rs1]` differs from the tag the context held, the context's contents are Initial as defined in <<ame-state-enablement>>.
+  If it equals it — the context is being carried to another hart by its owner — the contents are preserved.
 
-[cols="1,1,3",options="header,unbreakable"]
-|===
-|Field |Location |Description
+`ame.acquire` does not write `MS`.
+The allocator sets the applicable `MS` fields after binding.
 
-|WAIT_MODE
-|`1:0`
-|Waiting policy
+When the context is selected on another hart, the effects take place in this order: the context's tag is changed, so that every subsequent access from the other hart fails the tag check; the instructions the other hart had already issued to the context complete; the context is cleared if the tag differs; and only then does the executing hart's selection move to it.
+An instruction of the outgoing owner therefore either completes before the clear or traps, and none of its writes can land in the cleared context.
 
-|TIMEOUT_CLASS
-|`5:2`
-|Bounded-wait class
+The drain is the architectural serialization point for a shared backend.
+It is defined on the *context*, not on the hart or the tag, so it also orders a thread's own stream when the thread is carried between harts: nothing the thread issued on the previous hart can be overtaken by what it issues on the next.
+Instruction streams of different owners are never interleaved in execution, regardless of queueing, clock-domain crossings, or issue-to-execute decoupling between a hart and its backend.
 
-|RESERVED
-|`XLEN-1:6`
-|Must be zero
-|===
+Binding is *per-hart*.
+Where several harts reach one backend, each hart binds and selects its own context; different harts may concurrently hold different contexts of the same backend and issue to it concurrently.
+Isolation between those concurrent streams is provided by context separation and the tag check, not by serialization: the drain requirement orders the ownership transfer on the executing hart only and imposes no ordering between the streams of different harts.
+Contention between concurrently issuing harts is resolved below the ISA, at the backend's issue arbitration.
 
-`WAIT_MODE=0b00` is TRY and does not wait. `WAIT_MODE=0b01` is BOUNDED_WAIT
-and waits for a finite, implementation-defined interval. Other encodings are
-reserved. For BOUNDED_WAIT, `TIMEOUT_CLASS` values `0x0` through `0x3` select
-SHORT, MEDIUM, LONG, and VERY_LONG; `0xF` is implementation-defined and all
-other values are reserved. TRY ignores `TIMEOUT_CLASS`.
+[NOTE]
+====
+Attaching the drain to the ownership transfer serves the same role as an acquire-side barrier in the memory model.
+The transfer is the one point at which serialization is required, so the guarantee is attached to it and cannot be omitted by software error — in preference to a free-standing fence that could be misplaced.
 
-`rd` receives:
+An implementation may additionally provide a drain-to-completion operation usable at any privilege level, for software that needs completion visibility without an ownership change.
+Such an operation is not required for isolation and is not defined here.
+====
 
-[cols="1,1,3",options="header"]
-|===
-|Field |Location |Description
-
-|SUCCESS
-|`0`
-|One on success; zero on failure
-
-|STATUS
-|`7:1`
-|Acquisition status
-
-|RESERVED
-|`XLEN-1:8`
-|Zero
-|===
-
-[cols="1,2,1,4",options="header",%unbreakable]
-|===
-|STATUS |Name |SUCCESS |Description
-
-|`0x00`
-|GRANTED
-|1
-|Granted or already owned
-
-|`0x01`
-|BUSY
-|0
-|Backend unavailable
-
-|`0x02`
-|UNSUPPORTED
-|0
-|No accessible AME backend
-
-|`0x03`
-|DISABLED
-|0
-|Disabled by implementation or platform configuration
-
-|`0x04`
-|BAD_DESC
-|0
-|Invalid descriptor
-
-|`0x05`
-|TIMEOUT
-|0
-|Bounded wait expired
-
-|`0x06`
-|INTERRUPTED
-|0
-|Wait interrupted
-
-|`0x07`
-|DENIED
-|0
-|Denied by platform policy
-
-|`0x08-0x7E`
-|RESERVED
-|-
-|Reserved
-
-|`0x7F`
-|IMPL_DEFINED
-|Impl.
-|Implementation-defined result
-|===
-
-An invalid descriptor returns BAD_DESC, and disabled configuration returns
-DISABLED. A request from the current owner returns GRANTED without changing
-the bound state or `MS`. A new grant atomically binds architectural initial
-state, sets `ameown.OWNED` to one, and sets each applicable `MS` field to
-Initial. Initial state has zero-valued `M` and `Acc` registers, zero-valued
-`Md` and `Ad` descriptors, and reset-valued writable AME CSRs. Failure changes
-neither backend binding, `ameown`, nor `MS`.
-
+[[ame-context-release]]
 ==== `ame.release`
 
-`ame.release` requires every applicable `MS` field to be non-Off. If the
-current context owns the backend, it stops accepting new operations, drains
-retired operations and earlier state-save stores, unbinds the state, and
-atomically releases ownership.
+`ame.release` sets the selected context's state to Initial: every applicable `MS` field becomes Initial, every `M` and `Acc` register returns to reads-as-zero (<<ame-register-validity>>), every `Md` and `Ad` register returns to its reset value, and every writable AME context CSR returns to its reset value.
 
-After release, `ameown.OWNED` is zero and each applicable `MS` field is
-Initial. If the current context is not the owner, the instruction is a no-op
-that preserves `MS`.
+`ame.release` requires every applicable `MS` field to be non-Off.
+It is available at user level.
 
-<<<
+`ame.release` is a *hint*:
 
-[[ame-backend-context-switch]]
-=== OS context switch
+* a program that never executes it remains correct.
+  Omitting it is merely more expensive to switch away from, because the state remains Dirty.
+* it does not perform, and shall not be relied upon for, isolation clearing (<<ame-rule-allocator-isolation>>);
+* it does not affect the ownership tag, which is supervisor state, and it does not unbind the context.
 
-Software saves `ameown.OWNED` with the execution context. Before switching out
-an owner, it saves required AME state and releases the backend.
+The hint allows the allocator to skip the save, to reclaim the context at no cost, and to power-gate backing storage.
+`ame.release` clears the validity of every `M` and `Acc` register at once; <<ame:doc:inst:mzero_2d_m,mzero.2d.m>> and <<ame:doc:inst:mzero_2d_acc,mzero.2d.acc>> do the same for a single register group.
 
-To restore a saved owner, software enables `MS`, executes `ame.acquire`, and
-waits for success. It then restores any saved AME state and sets `MS` to Clean,
-or retains the initial state and Initial status established by acquisition.
-AME execution resumes only after acquisition succeeds and any required restore
-completes.
+[[ame-context-save-restore]]
+==== `ame.save` and `ame.restore`
+
+`ame.save rs1, rs2` transfers the full architectural state of resident context `X[rs2]` to memory at address `X[rs1]`.
+`ame.restore rs1, rs2` transfers it back.
+Both execute at supervisor level and above; at user level they raise an illegal-instruction exception.
+Both raise an illegal-instruction exception, and change no state, if `X[rs2]` names a context that the executing hart cannot reach — when `V=1`, a context outside the guest's window (<<ame-context-virtualization>>).
+
+Upon completion, both instructions set the named context's state to Clean: its contents are valid and the memory copy is current.
+When the named context is the one selected on the executing hart, the applicable `MS` fields become Clean accordingly.
+
+Naming the context explicitly lets the allocator spill or fill a context that is not currently selected on any hart — including the retained context of a descheduled thread — without disturbing the context the hart is executing in.
+State always moves through memory; no hart-to-hart transfer path exists or is required.
+
+The transfer uses a canonical layout derived from the discovered state geometry (<<ame-context-discovery>>).
+The layout begins with a header holding the register-validity bitmap of <<ame-register-validity>>.
+`ame.save` may skip registers whose validity bit is clear, recording only the header bit; `ame.restore` reinstates reads-as-zero for registers marked invalid in the header.
+The layout always carries every `Md` and `Ad` register and every writable context CSR; only the `M` and `Acc` registers are subject to the bitmap.
+Laziness therefore survives a save and restore round trip: a context that has written two of its registers costs two registers of memory traffic, indefinitely.
+
+The canonical layout is the serialization format for context switch, for migration between harts and backends, and for virtual-machine migration.
+
+The memory accesses of `ame.save` and `ame.restore` follow the rules of <<ame-common-memory>>.
+
+[[ame-context-virtualization]]
+=== Virtualization
+
+`ame.acquire`, `ame.save`, and `ame.restore` name the context they act on, and `ame.acquire` also names the owner it binds.
+Context numbers and ownership tags are physical names, each in one namespace per backend domain.
+When the hypervisor extension is implemented alongside AME and `V=1`, they are instead *guest* names, translated by hardware through an HS-level window before they are used, so that a guest may number its contexts and tag its threads from zero without being able to reach anything the hypervisor has not granted it.
+
+This is the same construction as two-stage address translation: the guest operates in a namespace of its own, and an HS-level register decides where that namespace lands.
+
+==== Name translation
+
+Let `TAGW` be the implemented ownership-tag width and `GTAGW` the guest ownership-tag width, both reported by the platform description (<<ame-context-discovery>>); `GTAGW` is at most `TAGW`.
+
+When `V=1` and `hstatus.VTAME` is zero, the `rs2` operand of `ame.acquire`, `ame.save`, and `ame.restore` is a guest context number, relocated into the guest's window as
+
+  physical context = hamectx.CBASE + X[rs2]
+
+Each of the three raises an illegal-instruction exception, and changes no state, if `X[rs2]` is not less than `hamectx.CLEN`.
+
+The `rs1` operand of `ame.acquire` is a guest ownership tag, widened into a physical one as
+
+  physical tag = hametag.TPREFIX | X[rs1]
+
+`ame.acquire` raises an illegal-instruction exception, and changes no state, if `X[rs1]` is not less than `2^GTAGW`.
+
+Both are guest errors — the guest has named a context or a thread outside its own allotment — so the exception is delivered under the ordinary delegation rules, to VS-mode, where the guest handles it.
+
+The `rs1` operand of `ame.save` and `ame.restore` is a memory address, not a name, and is translated as any other explicit memory access, through both stages when `V=1` (<<ame-common-memory>>).
+`ame.release`, and every AME instruction that acts on the context selected on the hart, name nothing and are unaffected.
+
+When `V=0` the operands are physical names and no translation occurs.
+`hamectx` and `hametag` have no effect on instructions executed at HS level or above.
+
+The ownership tag compared on the access path (<<ame-ownership-tag>>) is always the physical tag.
+A guest never observes a physical tag or a physical context number.
+
+Reads of `amectx` and `ametag` (<<ame-supervisor-csrs>>) from VS-mode are translated the same way when `hstatus.VTAME` is zero: `amectx.CTX` reports the selection relative to `hamectx.CBASE`, `ametag` reports the low `GTAGW` bits of the bound tag, and `amectx.VALID` reads zero — as though the hart had no selection — whenever the selection lies outside the guest's window or the bound tag's prefix differs from `hametag.TPREFIX`.
+
+==== The `hstatus.VTAME` gate
+
+`hstatus.VTAME` selects between native guest execution and emulation by the hypervisor.
+Bit 23 of `hstatus` is a provisional allocation, adjacent to `VTVM`, `VTW`, and `VTSR`; a future ratified version may assign a different bit.
+
+When `hstatus.VTAME` is one and `V=1`, `ame.acquire`, `ame.save`, and `ame.restore`, and reads of `amectx` and `ametag`, raise a virtual-instruction exception, which is taken to HS-mode.
+The hypervisor may then apply its own admission policy, translate the operands in software, and issue the instruction itself.
+`hstatus.VTAME` has no effect when `V=0`, and no effect on any other AME instruction.
+It resets to one, so that a hypervisor which has not configured AME for its guests intercepts rather than grants.
+
+An implementation may hardwire `hstatus.VTAME` to one and `hamectx.CLEN` to zero.
+Every guest execution of the three instructions then traps to HS-mode, the hypervisor emulates all three, and no name translation is performed in hardware.
+Such an implementation is conforming.
+
+==== Revocation and trap delivery
+
+When `V=1`, an ownership-tag mismatch raises a virtual-instruction exception rather than an illegal-instruction exception.
+
+A mismatch observed by a guest means that the hypervisor has rebound the guest's context to another owner.
+The tag is supervisor state that `ame.acquire` alone writes, and under virtualization the guest's tags are formed from a prefix it cannot read; a guest OS therefore has no way to name, observe, or repair the condition.
+Delivering the trap to HS-mode puts it where it can be handled — the hypervisor restores the context, or re-admits the guest under its own policy, and resumes the guest at the faulting instruction.
+
+The first-use trap follows the two-level `MS` model of <<ame-state-enablement>>: an instruction that is illegal because `vsstatus.MS` is Off raises an illegal-instruction exception, delivered to the guest under the ordinary delegation rules, while one that is illegal because the HS-level `MS` is Off with `vsstatus.MS` non-Off raises a virtual-instruction exception.
+The second must reach the hypervisor even when the guest has illegal-instruction exceptions delegated to it, or the hypervisor could not enable AME for its guests lazily.
+
+==== Requirements on the hypervisor
+
+* The context windows of guests that are concurrently resident on the same backend domain shall not overlap.
+  Hardware does not check this; two guests given overlapping windows can reach each other's contexts, and the separation the tag provides is lost.
+* Distinct guests shall be given distinct `hametag.TPREFIX` values.
+  Deriving the prefix from `hgatp.VMID` gives this for free and ties the tag namespace to the lifetime that already governs guest identity.
+* Writing `hamectx` or `hametag` changes neither the contexts already bound nor the tag bound to any hart; it affects only subsequent executions of `ame.acquire`, `ame.save`, and `ame.restore`.
+  A hypervisor that reassigns a context between guests reclaims it first, as it would between threads (<<ame-software-guidance>>).
+* A hypervisor that moves a virtual hart between physical harts re-establishes the binding on the destination by reading `amectx` and `ametag` at HS level on the source and executing `ame.acquire` with those physical values on the destination; the selection is hart state and does not travel with the guest.
+* The platform description presented to a guest shall report the guest's allotment: `NCTX` equal to `hamectx.CLEN`, and the tag width equal to `GTAGW`.
+  A guest that read the physical values would size its AME working set to contexts it cannot reach.
+
+[NOTE]
+====
+The precedent is `vsatp.ASID`, which is implicitly qualified by `hgatp.VMID`: the guest names address spaces in a namespace of its own, and hardware widens the name so that two guests using the same number do not collide.
+The ownership tag is the same kind of object — a name for a schedulable software context — and it is virtualized the same way.
+
+The prefix is held in a CSR rather than taken from `hgatp.VMID` directly, so that the split between prefix and guest bits does not have to track `VMIDLEN`, and so that a hypervisor may partition its tag space by some other rule.
+A hypervisor that wants the `VMID` construction writes it into `TPREFIX`.
+
+`hamectx.CLEN` resetting to zero and `hstatus.VTAME` resetting to one are the two halves of the same safe default: a hypervisor that knows nothing about AME neither grants contexts to its guests nor lets a guest execute a context-management instruction without its knowledge.
+====
+
+[[ame-context-discovery]]
+=== Discovery
+
+The context configuration is static per implementation and is described to the allocator by firmware at initialisation — through the device tree, ACPI, or an equivalent platform description — rather than through a dedicated CSR.
+The allocator requires this description before scheduling begins, because it is an input to constructing the scheduling topology; that is a natural fit for boot-time firmware tables and a poor fit for a per-hart CSR read.
+
+The platform description shall provide at minimum:
+
+* `NCTX`, the number of resident contexts reachable from each hart;
+* the state geometry: the register counts and dimensions of <<state>>, and the total size of the canonical save layout of <<ame-context-save-restore>>;
+* a backend-domain identifier, such that harts sharing a backend carry the same domain.
+  This is the basis for allocator topology awareness and for the affinity description;
+* the ownership-tag width;
+* where the hypervisor extension is implemented, the guest ownership-tag width, `GTAGW`, which bounds the tag a guest may write and therefore the number of threads a guest can hold contexts for at once.
+
+The binding of these properties into the device tree and into ACPI tables is defined by the respective platform specifications, not by this document.
+
+The description presented to a guest reports the guest's own allotment, not the physical configuration of the machine; see <<ame-context-virtualization>>.
+
+A backend-utilisation counter SHOULD be provided through the standard performance-counter interface.
+It is the measurement input to allocator placement policy.

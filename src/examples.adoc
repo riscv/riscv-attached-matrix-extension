@@ -58,9 +58,8 @@ rules>> for the normative contract.
 These examples implement the GEMM accumulation `C [M×P] += A [M×K] × B [K×P]`.
 AME partitions each matrix into N×N squares, where `N = sqrt(AME_NELEM)`.
 
-The examples assume that the caller has enabled `MS` and successfully acquired
-the backend. The caller releases the backend after the AME state is no longer
-needed; see <<ame-common-state-access>>.
+The examples assume that the operating system has bound an AME context to the calling thread and enabled `MS`, so that the kernel runs with AME state available; see <<ame-common-state-access>>.
+A caller that no longer needs its AME state may execute `ame.release` to return the context to Initial, but the kernels below do not depend on it.
 
 For a given unit or wide datatype with element size `dtype_bits`,
 `group_size = dtype_bits / AME_UNIT_DATATYPE_SIZE` consecutive M registers hold one square.

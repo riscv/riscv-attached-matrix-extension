@@ -20,10 +20,14 @@ Resource Management::
 !===
 | Mnemonic | Name
 
-a| `ame.acquire rd, rs1`
-| <<ame:doc:inst:ame_acquire,Acquire the AME backend>>
+a| `ame.acquire rs1, rs2`
+| <<ame:doc:inst:ame_acquire,Bind a context to an owner>>
 a| `ame.release`
-| <<ame:doc:inst:ame_release,Release the AME backend>>
+| <<ame:doc:inst:ame_release,Return the selected context to Initial>>
+a| `ame.restore rs1, rs2`
+| <<ame:doc:inst:ame_restore,Restore a context from memory>>
+a| `ame.save rs1, rs2`
+| <<ame:doc:inst:ame_save,Save a context to memory>>
 !===
 
 
@@ -382,26 +386,36 @@ a| `mreducemin.row md, ms1`
 === `ame.acquire`
 
 Synopsis::
-Acquire the entire AME backend
+Bind a context to an owner
 
 Mnemonic::
-`ame.acquire rd, rs1`
+`ame.acquire rs1, rs2`
 
 Encoding::
 +
 [wavedrom, ,svg,subs='attributes',width="100%"]
 ....
-{"reg":[{"bits":7,"name": 0x2b,"type":2},{"bits":5,"name": "rd","type":4},{"bits":3,"name": {ame-enc-funct3},"type":2},{"bits":5,"name": "rs1","type":4},{"bits":5,"name": 0x9,"type":2},{"bits":7,"name": {ame-enc-r2-bank1-funct7},"type":2}]}
+{"reg":[{"bits":7,"name": 0x2b,"type":2},{"bits":5,"name": 0x0,"type":2},{"bits":3,"name": {ame-enc-funct3},"type":2},{"bits":5,"name": "rs1","type":4},{"bits":5,"name": "rs2","type":4},{"bits":7,"name": 0x64,"type":2}]}
 ....
 
 Description::
-Requests the entire AME backend; see <<ame-backend-management-operators>>.
+Binds resident context `X[rs2]` to the ownership tag `X[rs1]` and selects that context for the executing hart.
+The instruction executes at supervisor level and above and cannot fail for want of a resource; it returns no status.
+It does nothing if the context is already selected on this hart under that tag.
+Otherwise it retires only after every AME instruction previously issued to the context, from any hart, has completed at the backend, or is otherwise ordered before any AME instruction issued to it after the binding.
+Binding a tag that differs from the context's current tag leaves the context Initial; binding the tag it already holds preserves the contents.
++
+`ame.acquire` does not write `MS`; see <<ame-context-acquire>> for the complete definition, including the per-hart binding rules for a shared backend.
+When `V=1`, `rs2` and `rs1` carry guest names that are translated through the guest's window, or the instruction traps to HS-mode (<<ame-context-virtualization>>).
 
 Operation::
 +
 [source]
 ----
-X[rd] = acquire_backend(descriptor = X[rs1])
+if not (selected == X[rs2] and bound_tag == X[rs1]):
+    drain(context = X[rs2])
+    if tag(context = X[rs2]) != X[rs1]: initialise(context = X[rs2])
+    tag(context = X[rs2]) = X[rs1]; selected = X[rs2]; bound_tag = X[rs1]
 ----
 +
 This operation uses the common rules in <<ame-common-state-access>>.
@@ -412,7 +426,7 @@ This operation uses the common rules in <<ame-common-state-access>>.
 === `ame.release`
 
 Synopsis::
-Release the entire AME backend
+Return the selected context to Initial
 
 Mnemonic::
 `ame.release`
@@ -425,16 +439,88 @@ Encoding::
 ....
 
 Description::
-Releases the entire AME backend; see <<ame-backend-management-operators>>.
+Sets the context selected on the executing hart to Initial: every `M` and `Acc` register returns to reads-as-zero, every `Md` and `Ad` register and every writable AME context CSR returns to its reset value, and every applicable `MS` field becomes Initial.
+The instruction is available at user level and does not change the ownership tag or unbind the context.
++
+`ame.release` is a hint.
+A program that never executes it remains correct, and it shall not be relied upon for isolation; see <<ame-context-release>>.
 
 Operation::
 +
 [source]
 ----
-release the backend held by this hart
+initialise the context selected on this hart
 ----
 +
 This operation uses the common rules in <<ame-common-state-access>>.
+
+<<<
+
+[#ame:doc:inst:ame_restore]
+=== `ame.restore`
+
+Synopsis::
+Restore a context from memory
+
+Mnemonic::
+`ame.restore rs1, rs2`
+
+Encoding::
++
+[wavedrom, ,svg,subs='attributes',width="100%"]
+....
+{"reg":[{"bits":7,"name": 0x2b,"type":2},{"bits":5,"name": 0x0,"type":2},{"bits":3,"name": {ame-enc-funct3},"type":2},{"bits":5,"name": "rs1","type":4},{"bits":5,"name": "rs2","type":4},{"bits":7,"name": 0x65,"type":2}]}
+....
+
+Description::
+Reads the canonical save layout at address `X[rs1]` into resident context `X[rs2]` and sets that context to Clean.
+The named context need not be the one selected on the executing hart.
+Registers marked invalid in the layout header are reinstated as reads-as-zero.
+The instruction executes at supervisor level and above; see <<ame-context-save-restore>>.
+When `V=1`, `rs2` carries a guest context number (<<ame-context-virtualization>>).
+
+Operation::
++
+[source]
+----
+context(X[rs2]) = canonical_layout(address = X[rs1])
+----
++
+This operation uses the common rules in <<ame-common-state-access>> and <<ame-common-memory>>.
+
+<<<
+
+[#ame:doc:inst:ame_save]
+=== `ame.save`
+
+Synopsis::
+Save a context to memory
+
+Mnemonic::
+`ame.save rs1, rs2`
+
+Encoding::
++
+[wavedrom, ,svg,subs='attributes',width="100%"]
+....
+{"reg":[{"bits":7,"name": 0x2b,"type":2},{"bits":5,"name": 0x0,"type":2},{"bits":3,"name": {ame-enc-funct3},"type":2},{"bits":5,"name": "rs1","type":4},{"bits":5,"name": "rs2","type":4},{"bits":7,"name": 0x66,"type":2}]}
+....
+
+Description::
+Writes resident context `X[rs2]` to memory at address `X[rs1]` in the canonical save layout and sets that context to Clean.
+The named context need not be the one selected on the executing hart.
+Registers whose validity bit is clear may be skipped, with only the layout header recording their state.
+The instruction executes at supervisor level and above; see <<ame-context-save-restore>>.
+When `V=1`, `rs2` carries a guest context number (<<ame-context-virtualization>>).
+
+Operation::
++
+[source]
+----
+canonical_layout(address = X[rs1]) = context(X[rs2])
+----
++
+This operation uses the common rules in <<ame-common-state-access>> and <<ame-common-memory>>.
 
 <<<
 
@@ -484,10 +570,9 @@ Encoding::
 ....
 
 Description::
-Sets the datatype of an `Acc` register and clears every physical storage bit of
-the accumulator to zero.  This is a raw-bit clear, not conversion to the new
-datatype's semantic zero.  The new 32-bit descriptor is `X[rs1][31:0]`; any
-upper X-register bits are ignored.
+Sets the datatype of an `Acc` register and clears every physical storage bit of the accumulator to zero.
+This is a raw-bit clear, not conversion to the new datatype's semantic zero; the accumulator's validity bit is cleared with it (<<ame-register-validity>>).
+The new 32-bit descriptor is `X[rs1][31:0]`; any upper X-register bits are ignored.
 
 Operation::
 +
@@ -4945,11 +5030,10 @@ Encoding::
 ....
 
 Description::
-Sets `Md[md]` to the low 32 bits of `X[rs1]` and clears every physical storage bit
-in the complete M-register group required by that new datatype.  This is a
-raw-bit clear, not conversion to the new datatype's semantic zero.  The group
-base must meet the new datatype's alignment requirement and its complete span
-must fit in the implemented M register file.  Upper X-register bits are ignored.
+Sets `Md[md]` to the low 32 bits of `X[rs1]` and clears every physical storage bit in the complete M-register group required by that new datatype.
+This is a raw-bit clear, not conversion to the new datatype's semantic zero; the validity bits of the group are cleared with it (<<ame-register-validity>>).
+The group base must meet the new datatype's alignment requirement and its complete span must fit in the implemented M register file.
+Upper X-register bits are ignored.
 
 Operation::
 +
@@ -5711,6 +5795,7 @@ Encoding::
 
 Description::
 Writes zero to every element of `acc`.
+The accumulator returns to reads-as-zero: its validity bit is cleared, and a subsequent `ame.save` of the context may skip it (<<ame-register-validity>>).
 
 Operation::
 +
@@ -5741,6 +5826,7 @@ Encoding::
 
 Description::
 Writes zero to every element of the M register group `md`.
+The registers return to reads-as-zero: their validity bits are cleared, and a subsequent `ame.save` of the context may skip them (<<ame-register-validity>>).
 
 Operation::
 +

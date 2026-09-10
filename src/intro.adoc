@@ -11,6 +11,6 @@ Isolated::
 *  AME is designed to work well on tensor codes regardless of whether the host hart implements RISC-V Vector (RVV). Implementing RVV is not a prerequisite of AME. Frequently moving state between RVV and AME may degrade performance on some implementations.
 
 Detachable::
-*  AME allows harts to share an AME backend and provides explicit ownership
-   management; see <<shared-ame-backend>>. Implementations may instead provide
-   dedicated backends.
+*  AME decouples its architectural state from the hart.
+  An implementation may give each hart a private context, hold several contexts on one hart, or share a set of contexts between harts; system software binds contexts to threads through one common mechanism.
+  See <<shared-ame-backend>>.

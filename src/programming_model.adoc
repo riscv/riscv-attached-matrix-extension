@@ -15,51 +15,131 @@ AME adds a two-bit matrix context status field, `MS[1:0]`, to `mstatus`.
 It is shadowed in `sstatus` and follows the `VS[1:0]` state model.
 
 .Encoding of the `MS[1:0]` status field
-[cols="1,1,3",options="header"]
+[cols="1,1,3,1",options="header"]
 |===
-|Encoding |Status |Meaning
+|Encoding |Status |Meaning |Must be saved
 
 |`0`
 |Off
-|AME state is disabled.
+|AME is disabled on this hart.
+  Any AME instruction other than `ame.acquire`, `ame.save`, and `ame.restore` raises an illegal-instruction exception.
+  Bound-context state, if any, is unaffected.
+|no
 
 |`1`
 |Initial
-|AME state is enabled and initial.
+|AME state is enabled, and every `M` and `Acc` register of the bound context is guaranteed to read as zero.
+  Every `Md` and `Ad` register and every writable AME context CSR holds its reset value.
+|no
 
 |`2`
 |Clean
 |AME state is enabled and matches its saved image.
+|no
 
 |`3`
 |Dirty
 |AME state is enabled and might differ from its saved image.
+|*yes — the only one*
 |===
 
-Initial, Clean, and Dirty enable AME state. An AME operation that might modify
-that state changes each applicable Initial or Clean field to Dirty unless the
-operation specifies another result. An implementation may set Dirty
-conservatively. Dirty sets the corresponding `SD` bit.
+Initial, Clean, and Dirty enable AME state.
+The transitions between them are:
 
-Privileged software may set `MS` to Clean after saving AME state. Writing `MS`
-does not modify AME state. `MS` resets to Off; a hart without AME may make it
-read-only zero.
+* *Initial or Clean to Dirty*, by hardware, on any instruction that writes an `M`, `Acc`, `Md`, or `Ad` register or a writable AME context CSR, unless the instruction's definition states another result.
+  An implementation may set Dirty conservatively.
+  Dirty sets the corresponding `SD` bit.
+* *Any content state to Initial*, by `ame.acquire` binding a new tag, by `ame.release`, and by a privileged write of Initial to `MS` (below).
+* *Any content state to Clean*, by `ame.save` and `ame.restore`, and by a privileged write of Clean to `MS`.
 
-When the hypervisor extension is present, `vsstatus` contains an `MS[1:0]`
-field. When `V=1`, both `mstatus.MS` and `vsstatus.MS` are applicable. AME is
-enabled only when every applicable field is non-Off, and state changes update
-every applicable field. A Dirty `vsstatus.MS` sets `vsstatus.SD`.
+Privileged software may write any value to `MS`.
+Writing Off or Clean does not modify AME state; software writes Clean after it has saved the state, and is itself responsible for the consequences of writing Clean when it has not.
+Writing Initial performs the same clearing as `ame.release`: every `M` and `Acc` register of the bound context returns to reads-as-zero and every `Md` and `Ad` register and writable context CSR returns to its reset value.
+This is what keeps Initial truthful — a context whose `MS` reads Initial always reads as zero, whichever way it got there — and it gives the allocator a constant-time way to discard a context's contents.
+Writing Dirty is permitted and has no effect other than the field value.
+`MS` resets to Off; a hart without AME may make it read-only zero.
 
-A non-Off `MS` value enables AME state but does not by itself grant access to
-an AME backend. Backend ownership and state-access requirements are defined in
-<<ame-common-state-access>>.
+When the hypervisor extension is present, `vsstatus` contains an `MS[1:0]` field.
+When `V=1`, both `mstatus.MS` and `vsstatus.MS` are applicable.
+AME is enabled only when every applicable field is non-Off, and state changes update every applicable field.
+A Dirty `vsstatus.MS` sets `vsstatus.SD`.
+
+When `V=1`, an AME instruction that is illegal because `vsstatus.MS` is Off raises an illegal-instruction exception, delivered under the ordinary delegation rules.
+One that is illegal because `mstatus.MS` is Off while `vsstatus.MS` is non-Off raises a virtual-instruction exception instead, which is taken to HS-mode.
+The first is the guest's own first-use trap; the second is the hypervisor's, and it must reach the hypervisor even when the guest has had illegal-instruction exceptions delegated to it.
+
+[NOTE]
+====
+The Initial encoding guarantees that the registers read as zero.
+Earlier drafts described Initial only as an unspecified initial state.
+The strengthening turns every clearing step in <<shared-ame-backend>> into a constant-time state-field write, and it makes isolation at an ownership transfer expressible without a data-movement pass over the register file.
+
+An implementation may realise the guarantee as reads-return-zero and materialise the clearing lazily on the first write; see <<ame-register-validity>>.
+====
+
+===== Hart state and context state
+
+The four encodings have two distinct homes, because harts and contexts are decoupled (<<shared-ame-backend>>):
+
+* Off is *hart* state.
+  It gates the hart's instruction stream and exists whether or not a context is bound.
+  It is context-switched with the thread like any other `xstatus` field.
+* Initial, Clean, and Dirty are *context* state.
+  They describe the bound context's contents, together with the per-register validity bits of <<ame-register-validity>>; they reside with the context and travel with it, so that a retained context rebound on a different hart presents its preserved state there.
+  For these values the hart's `MS` field is a *proxy*: a window onto the currently bound context, through which its state is observed.
+
+Two invariants follow:
+
+* The proxy has a referent only when the hart has a context selected (<<ame-hart-binding>>).
+  A non-Off `MS` on a hart with no selection enables nothing: every AME instruction that would access the context raises an illegal-instruction exception, as it would with `MS` Off.
+* Isolation between contexts does not depend on how many harts have a context selected: the access-path checks of <<ame-common-state-access>> hold unconditionally.
+  Concurrent *execution* on one context from more than one hart is UNPREDICTABLE with respect to that context's contents and its `MS`, and shall be prevented by system software (<<ame-ownership-tag>>).
+
+Supervisor writes to `MS` are required only for the transition into and out of Off.
+The content states are maintained by side effect: Initial by `ame.acquire` and `ame.release`, Clean by `ame.save` and `ame.restore`, and Dirty only ever by hardware.
+<<ame-backend-management-operators>> defines these instructions.
+
+Where an implementation gives each hart a private context, the context state and the hart field are the same storage, the proxy is the identity, and `MS` behaves exactly as `FS` and `VS` do.
+The distinction between hart state and context state has architectural consequences only where harts and contexts are decoupled: retained contexts, sharing, and migration.
+
+[[ame-register-validity]]
+===== Per-register validity
+
+The reads-as-zero guarantee of Initial is defined per register and anchored at the ownership transfer:
+
+After an `ame.acquire` that binds a new tag, and after `ame.release`, every `M` and `Acc` register of the context shall read as zero, and shall continue to read as zero until that register is individually written — including after the context has left the Initial state.
+
+The intended implementation is one *validity bit per register*, residing with the context, like the content states above, so that the bits travel with a retained context across rebinding.
+`ame.acquire` and `ame.release` clear all validity bits, an operation over as many bits as there are registers and never over register data.
+A read of an invalid register returns zeros on the read path.
+Any instruction that writes a register sets its bit and materialises that register's storage, with three exceptions that leave the register zero and therefore clear its bit instead: <<ame:doc:inst:mzero_2d_m,mzero.2d.m>> and <<ame:doc:inst:mzero_2d_acc,mzero.2d.acc>>, and the raw-bit clear that <<ame:doc:inst:msettyp,msettyp>> and <<ame:doc:inst:asettyp,asettyp>> perform on the data register whose datatype they set.
+
+The validity bits cover only the `M` and `Acc` registers; `Md`, `Ad`, and the context CSRs have none and are always carried by a save.
+`MS` is therefore not the reduction of the validity bits alone: Dirty is set by a write to any of the context's state (<<ame-state-enablement>>), so a context whose only modification is an `msettyp` is Dirty with every validity bit clear.
+Initial does imply that every validity bit is clear, and the per-register bits are not separately visible supervisor state.
+The allocator's constant-time question, "must I save?", is answered by `MS` alone.
+
+The bitmap is visible to software in one place only: the header of the canonical save layout (<<ame-context-save-restore>>), where it lets a save skip registers that are still in their initial state.
+
+[NOTE]
+====
+This is the structure used by XSAVE, whose `XSTATE_BV` init tracking lets a save skip components that are in their initial state; Intel's `LDTILECFG` likewise returns all tiles to INIT on reconfiguration, and Arm SME guarantees that ZA is zeroed when it is enabled.
+
+It also avoids the historical failure of AltiVec's `VRSAVE`, where the live-register mask was maintained by software and therefore over-approximated.
+Here the mask is a hardware side effect of writes, at no software cost.
+
+An encoding whose contents are merely unpredictable was considered and rejected.
+Isolation requires in any case that a read after an ownership transfer never return the previous owner's data, so a defined-safe value is needed regardless — and zero is the value that matrix kernels want in their accumulators at kernel entry.
+====
+
+A non-Off `MS` value enables AME state on the hart.
+The context bound to the hart, the ownership tag that governs access to it, and the instructions that manage both are defined in <<shared-ame-backend>>.
 
 === State
 
 AME architectural state consists of its registers and writable context CSRs.
-When the current software execution context owns a backend, that state is bound
-to the context as defined in <<shared-ame-backend>>. AME instructions access
-the bound state and control data transfer between AME registers and memory.
+One complete copy of that state is an AME *context*; the context bound to the hart, and the rules that govern access to it, are defined in <<shared-ame-backend>>.
+AME instructions access the bound context and control data transfer between AME registers and memory.
 
 .Register state and data-movement paths for AME. AME defines bidirectional paths between memory and M, X and M, and M and Acc. The F/D and V extensions are _optional_; their register files have no direct AME datapath.
 image::ame_state.svg[AME state and architectural datapaths]
