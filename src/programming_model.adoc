@@ -445,11 +445,11 @@ passed.
 [[ame-consistency-model]]
 ==== Consistency model
 
-AME memory instructions appear to execute in program order on the local hart.
+AME memory instructions follow RVWMO with respect to other AME memory instructions.
 
-AME memory instructions follow RVWMO at the instruction level.  If the Ztso extension
-is implemented, AME memory instructions additionally follow RVTSO at the instruction
-level.
+To support decoupled operation, memory transfers involving the `M` registers are unordered with respect to non-AME memory transfers.
+
+If the `Ztso` extension is implemented, it enforces RVTSO strictly within the non-AME and AME domains respectively, but it does not enforce TSO between AME and non-AME memory instructions.
 
 Element operations are unordered within the instruction.
 
