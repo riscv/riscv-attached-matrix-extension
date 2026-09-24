@@ -12,7 +12,6 @@ AME defines the following implementation parameters:
 h| <<ame:doc:param:AME_NELEM,AME_NELEM>> | Number of elements in an AME square
 h| <<ame:doc:param:AME_NUM_ACC_REGS,AME_NUM_ACC_REGS>> | Number of implemented AME accumulator registers
 h| <<ame:doc:param:AME_NUM_M_REGS,AME_NUM_M_REGS>> | Number of AME M and Md registers
-h| <<ame:doc:param:AME_MAX_INT_DTYPE,AME_MAX_INT_DTYPE>> | Datatype used to interpret fixed-type scalar exponents
 h| <<ame:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>> | The datatype size, in bits, at which exactly one square fits in an M register
 |===
 
@@ -119,41 +118,6 @@ for code that references registers `m16`–`m31`.
 
 Type::
 one of: [16, 32]
-
-
-
-<<<
-
-[#ame:doc:param:AME_MAX_INT_DTYPE]
-=== AME_MAX_INT_DTYPE
-
-Datatype used to interpret fixed-type scalar exponents
-
-Description::
-+
---
-The integer datatype used by `mldexp.ew.x` and `mldexpacc.ew.x` to interpret
-the scalar exponent in `X[rs1]`.  It must have the greatest element width
-among the implementation's supported integer datatypes.  `X[rs1]` is
-zero-extended to that element width when it is narrower, or truncated to the
-low `sizeof(AME_MAX_INT_DTYPE)` bits when it is wider, and the resulting bit
-pattern is interpreted according to `AME_MAX_INT_DTYPE`.
-
-This parameter is present only when the implementation supports at least one
-integer datatype.  If it is absent, every `mldexp.ew.x` and
-`mldexpacc.ew.x` operation tuple is unsupported and follows the ordinary
-`amestatus.UN` behavior.  An implementation is not otherwise required to
-support an integer datatype merely to provide these optional instruction
-tuples.
-
-This parameter is part of an implementation's architectural configuration.
-It is independent of `amestype`, and software cannot change it by
-writing a CSR.  If several supported integer datatypes have the greatest
-supported size, the implementation must document which encoding is selected.
---
-
-Type::
-optional; when present, one supported integer datatype having the greatest supported integer element width
 
 
 

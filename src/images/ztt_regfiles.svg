@@ -38,7 +38,7 @@
   <text x="182" y="242" text-anchor="middle" font-size="20" fill="#1e1e1e">...</text>
 
   <rect x="55" y="252" width="255" height="65" fill="none" stroke="#1e1e1e" stroke-width="2"/>
-  <text x="182" y="292" text-anchor="middle" font-size="22" font-weight="bold" fill="#1e1e1e">M[N-1]</text>
+  <text x="182" y="292" text-anchor="middle" font-size="22" font-weight="bold" fill="#1e1e1e">M[R-1]</text>
 
   <!-- M width dimension -->
   <line x1="55" y1="334" x2="310" y2="334" stroke="#1e1e1e" stroke-width="1.5"
@@ -64,9 +64,9 @@
   <rect x="360" y="220" width="110" height="32" fill="#e8e8e8" stroke="#1e1e1e" stroke-width="2"/>
   <text x="415" y="242" text-anchor="middle" font-size="20" fill="#1e1e1e">...</text>
 
-  <!-- Md[N-1] -->
+  <!-- Md[R-1] -->
   <rect x="360" y="252" width="110" height="65" fill="none" stroke="#1e1e1e" stroke-width="2"/>
-  <text x="415" y="292" text-anchor="middle" font-size="18" font-weight="bold" fill="#1e1e1e">Md[N-1]</text>
+  <text x="415" y="292" text-anchor="middle" font-size="18" font-weight="bold" fill="#1e1e1e">Md[R-1]</text>
 
   <!-- Md width dimension -->
   <line x1="360" y1="334" x2="470" y2="334" stroke="#1e1e1e" stroke-width="1.5"
@@ -82,7 +82,7 @@
   <!-- M / Md group count (rotated, left of M) -->
   <!-- cy = (90+317)/2 = 203.5; register file spans y=90–317 -->
   <text transform="translate(30, 204) rotate(-90)" text-anchor="middle"
-        font-size="13" fill="#1e1e1e">N = AME_NUM_M_REGS (16 or 32)</text>
+        font-size="13" fill="#1e1e1e">R = AME_NUM_M_REGS (16 or 32)</text>
   <line x1="44" y1="90" x2="44" y2="317" stroke="#1e1e1e" stroke-width="1.5"
         marker-start="url(#arr-l)" marker-end="url(#arr-r)"/>
 
@@ -103,12 +103,12 @@
   <text x="722" y="242" text-anchor="middle" font-size="20" fill="#1e1e1e">...</text>
 
   <rect x="595" y="252" width="255" height="65" fill="none" stroke="#1e1e1e" stroke-width="2"/>
-  <text x="722" y="292" text-anchor="middle" font-size="22" font-weight="bold" fill="#1e1e1e">Acc[N-1]</text>
+  <text x="722" y="292" text-anchor="middle" font-size="22" font-weight="bold" fill="#1e1e1e">Acc[S-1]</text>
 
   <!-- Acc width dimension -->
   <line x1="595" y1="334" x2="850" y2="334" stroke="#1e1e1e" stroke-width="1.5"
         marker-start="url(#arr-l)" marker-end="url(#arr-r)"/>
-  <text x="722" y="351" text-anchor="middle" font-size="13" fill="#1e1e1e">AME_MAX_DATATYPE_SIZE × AME_NELEM bits</text>
+  <text x="722" y="351" text-anchor="middle" font-size="13" fill="#1e1e1e">AME_MAX_SQUARE_SIZE bits</text>
 
   <!-- ═══════════════════════════════════════════════
        Ad register file  x: 900–995  (width 95)
@@ -128,7 +128,7 @@
   <text x="947" y="242" text-anchor="middle" font-size="20" fill="#1e1e1e">...</text>
 
   <rect x="900" y="252" width="95" height="65" fill="none" stroke="#1e1e1e" stroke-width="2"/>
-  <text x="947" y="292" text-anchor="middle" font-size="18" font-weight="bold" fill="#1e1e1e">Ad[N-1]</text>
+  <text x="947" y="292" text-anchor="middle" font-size="18" font-weight="bold" fill="#1e1e1e">Ad[S-1]</text>
 
   <!-- Ad width dimension -->
   <line x1="900" y1="334" x2="995" y2="334" stroke="#1e1e1e" stroke-width="1.5"
@@ -143,7 +143,7 @@
 
   <!-- Acc / Ad group count (rotated, left of Acc) -->
   <text transform="translate(570, 204) rotate(-90)" text-anchor="middle"
-        font-size="13" fill="#1e1e1e">N = AME_NUM_ACC_REGS (1, 2, 4, 8, or 16)</text>
+        font-size="13" fill="#1e1e1e">S = AME_NUM_ACC_REGS (1, 2, 4, 8, or 16)</text>
   <line x1="584" y1="90" x2="584" y2="317" stroke="#1e1e1e" stroke-width="1.5"
         marker-start="url(#arr-l)" marker-end="url(#arr-r)"/>
 

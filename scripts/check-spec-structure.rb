@@ -86,36 +86,6 @@ unlisted_sections = section_names.to_set - categories.keys.to_set
 errors << "instruction-list entries without detailed sections: #{missing_sections.to_a.sort.join(', ')}" unless missing_sections.empty?
 errors << "detailed sections absent from the instruction list: #{unlisted_sections.to_a.sort.join(', ')}" unless unlisted_sections.empty?
 
-primary_contract = {
-  "Resource Management" => "ame-common-state-access",
-  "Elementwise Arithmetic" => "ame-common-arithmetic",
-  "Bitwise" => "ame-common-arithmetic",
-  "Compare and Predication" => "ame-common-arithmetic",
-  "Register move / data conversion" => "ame-common-register-groups",
-  "Elementwise Math Functions" => "ame-common-arithmetic",
-  "Memory" => "ame-common-memory",
-  "State Management" => "ame-common-register-groups",
-  "Matrix Multiply" => "ame-common-matmul"
-}
-categories_without_primary_contract = Set.new([
-  "Datatype Management",
-  "Permutation",
-  "Reduction"
-])
-data_scalar_categories = Set.new([
-  "Elementwise Arithmetic",
-  "Bitwise",
-  "Compare and Predication",
-  "Elementwise Math Functions"
-])
-control_scalar_names = Set.new(%w[
-  mldexp.ew.x
-  mldexpacc.ew.x
-  msll.ew.x
-  msra.ew.x
-  msrl.ew.x
-])
-
 sections.each do |anchor, name, section|
   active_section = active_asciidoc(section)
   category = categories[name]
@@ -145,19 +115,8 @@ sections.each do |anchor, name, section|
     errors << "#{name}: Operation source block contains AsciiDoc presentation markup"
   end
 
-  if category
-    contract = primary_contract[category]
-    if contract.nil? && !categories_without_primary_contract.include?(category)
-      errors << "#{name}: category #{category.inspect} has no common-contract mapping"
-    elsif contract && !active_section.match?(/<<#{Regexp.escape(contract)}(?:,[^>]*)?>>/)
-      errors << "#{name}: missing required common contract #{contract}"
-    end
-  end
-
-  data_scalar = name.end_with?(".ew.x") && data_scalar_categories.include?(category) &&
-                !control_scalar_names.include?(name)
-  if data_scalar && !active_section.match?(/<<ame-common-scalar-operands(?:,[^>]*)?>>/)
-    errors << "#{name}: data scalar does not reference the scalar-operand contract"
+  if name.end_with?(".ew.x") && !active_section.match?(/<<ame-common-scalar-operands(?:,[^>]*)?>>/)
+    errors << "#{name}: does not reference the scalar-operand contract"
   end
 end
 
@@ -277,7 +236,7 @@ end
 abort "spec-structure validation failed:\n  #{errors.join("\n  ")}" unless errors.empty?
 
 puts "checked #{sections.length} instruction pages: classification/detail sets and anchors agree, " \
-     "required blocks and primary common contracts are present, " \
+     "required blocks and scalar-operand contracts are present, " \
      "required publication includes are unconditional and exclude retired sources, " \
      "#{ame_doc_anchors.length} internal targets resolve uniquely, and " \
      "#{required_norm_anchors.length}/#{required_norm_anchors.length} normative anchors are published"

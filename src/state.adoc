@@ -136,7 +136,7 @@ version may assign different standard CSR addresses.
 
 | <<ame:doc:csr:amestype,amestype>>
 | `CC2`
-| Datatype of data scalar operands supplied in `X` registers
+| Datatype used to interpret scalar operands supplied in `X` registers
 
 | <<ame:doc:csr:ameown,ameown>>
 | `CC3`
@@ -189,26 +189,36 @@ The save-and-restore protocol for this field is defined in
 ==== amestype
 
 Selects the AME datatype used to interpret an X-register operand when an
-instruction declares a *data scalar* operand.  The encoding is the same
+instruction declares a *CSR-typed scalar* operand.  The encoding is the same
 32-bit datatype encoding used by `Md` registers.  A value of zero means that
-the scalar datatype is uninitialized; an unsupported datatype or conversion
-sets `amestatus.UN` and leaves the destination unchanged. Software may write
-any 32-bit encoding; unsupported encodings are retained in the CSR and are
-rejected when a data-scalar instruction uses them.
+the scalar datatype is uninitialized; an unsupported scalar datatype, or an
+unsupported exact operation/datatype tuple, sets `amestatus.UN` and leaves the
+destination unchanged. Software may write any 32-bit encoding; unsupported
+encodings are retained in the CSR and are rejected when a CSR-typed scalar
+instruction uses them.
 
-This CSR does not apply to fixed-type control scalars.  Shift amounts,
-indices, offsets, and other instruction-defined control values retain their
-fixed integer semantics and do not read this CSR.
+Every X-register scalar operand of an elementwise (`.ew.x`) instruction is typed
+by this CSR, including shift amounts, indices, offsets, and packed-slot
+selectors.  Control scalars outside the elementwise instructions, such as memory
+strides, retain their fixed integer semantics and do not read this CSR.  An
+instruction that supplies a datatype explicitly in an X register, such as
+<<ame:doc:inst:mbcast_m_x,mbcast.m.x>>, uses that datatype instead.
 
 The CSR resets to zero. It is backend context state and must be saved and
 restored with the AME state when software changes execution context.
+When XLEN is greater than 32, bits `XLEN-1:32` are WPRI and read as zero.
+Consequently, a read of `amestype` zero-extends `VALUE` to XLEN.
 
 |===
 | Field | Location | Description
 
 | VALUE
 | `31:0`
-| AME datatype encoding for data scalar X operands
+| AME datatype encoding for CSR-typed scalar X operands
+
+| RESERVED
+| `XLEN-1:32` (when `XLEN > 32`)
+| WPRI; reads as zero
 
 |===
 

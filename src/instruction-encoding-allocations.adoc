@@ -47,11 +47,11 @@ selector is reserved. This does not define an additional register format.
 |===
 | Allocation | Instruction count | `funct7` allocation | Selector / fixed fields | Remaining capacity
 
-| R3 | 95 | `0x00..0x50`, `0x54..0x63` except `0x49`, `0x4c` | n/a | 0 free; 2 reserved values
+| R3 | 89 | `0x00..0x50`, `0x54..0x59`, `0x5d`, `0x61..0x63` except `0x49`, `0x4c` | n/a | 0 free; 2 reserved values
 | R2 bank 0 | 28 | `{ame-enc-r2-bank0-funct7}` | `xfunct5=0x00..0x08, 0x0d..0x1f`; `0x09..0x0c` reserved | 0
 | R2 bank 1 | 11 | `{ame-enc-r2-bank1-funct7}` | `xfunct5=0x00..0x09`; `0x0a` fixes `ame.release` | 21
 | R1 | 4 | `{ame-enc-r1-bank-funct7}` | `xfunct10=0x000..0x003` | 1020
-| Unallocated | 0 | `0x64..0x7f` | n/a | 28 `funct7` banks
+| Unallocated | 0 | `0x5a..0x5c`, `0x5e..0x60`, `0x64..0x7f` | n/a | 34 `funct7` banks
 |===
 // END GENERATED AME ENCODING ALLOCATION TABLE
 

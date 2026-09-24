@@ -209,7 +209,7 @@ For 2D matrix multiply instructions, the inner product dimension extends to
 multi-operand rule.  They transfer one selected logical square and preserve or
 ignore the other packed slots as specified.  Their instruction-specific
 operand-formation rules take precedence over `N_sq = max(pack_factor)`.
-`mconv.ew`, by contrast, follows the general rule: its source and destination
+`mcvt.ew`, by contrast, follows the general rule: its source and destination
 datatypes may each be packed or non-packed, and both operands span `N_sq`
 squares like any other elementwise instruction.
 
