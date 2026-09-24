@@ -45,6 +45,7 @@ This is _not_ the number of elements stored in an AME M register, but is rather
 to AME_UNIT_DATATYPE_SIZE.
 
 AME_NELEM must be a power of 4.
+Equivalently, the tile side length `N = sqrt(AME_NELEM)` must be a power of two.
 
 --
 
