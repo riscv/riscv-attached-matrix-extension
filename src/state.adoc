@@ -117,7 +117,7 @@ is specified in
 
 === Control and status registers (CSRs)
 
-AME adds seven CSRs.
+AME adds four CSRs.
 
 The addresses below are provisional allocations in the corresponding
 user-level custom read/write and read-only CSR ranges.  A future ratified
@@ -126,38 +126,26 @@ version may assign different standard CSR addresses.
 |===
 | CSR | Address | Description
 
-| <<ame:doc:csr:amenlen,amenlen>>
-| `CC0`
-| AME tile side length
-
-| <<ame:doc:csr:ameudsz,ameudsz>>
-| `CC1`
-| AME unit datatype size in bits
+| <<ame:doc:csr:amestatus,amestatus>>
+| `800`
+| Accrued AME execution status
 
 | <<ame:doc:csr:amestype,amestype>>
-| `CC2`
+| `801`
 | Datatype of data scalar operands supplied in `X` registers
+
+| <<ame:doc:csr:ameparam,ameparam>>
+| `CC0`
+| AME architectural parameters
 
 | <<ame:doc:csr:ameown,ameown>>
 | `CC3`
 | Ownership of the AME backend
 
-| <<ame:doc:csr:amefflags,amefflags>>
-| `CC4`
-| Accrued AME floating-point exception flags
-
-| <<ame:doc:csr:amexsat,amexsat>>
-| `CC5`
-| AME fixed-point saturation flag
-
-| <<ame:doc:csr:amestatus,amestatus>>
-| `800`
-| Status of the AME extension
-
 |===
 
-`amestype` and `amestatus` are backend context state. `amenlen` and
-`ameudsz` report implementation capabilities. `ameown` reports ownership.
+`amestatus` and `amestype` are backend context state. `ameparam` reports
+implementation parameters. `ameown` reports ownership.
 
 [#ame:doc:csr:ameown]
 ==== ameown
@@ -210,150 +198,86 @@ restored with the AME state when software changes execution context.
 | `31:0`
 | AME datatype encoding for data scalar X operands
 
-|===
-
-[#ame:doc:csr:amenlen]
-==== amenlen
-
-Holds the value N = sqrt(AME_NELEM), the side length of an AME tile in elements.
-
-The value is a design-time constant equal to the square root of
-`AME_NELEM`.
-Because `AME_NELEM` is always a power of 4, N is always a power of 2.
-
-Software reads this CSR once at function entry to obtain N, then uses
-N to derive all tile loop bounds and memory strides without hardcoding any
-implementation-specific constants.
-This is analogous to reading `vlenb` in RISC-V Vector code.
-
-
-|===
-| Field | Location | Description
-
-| VALUE
-| `XLEN-1:0`
-| Tile side length (N)
+| RESERVED
+| `XLEN-1:32`
+| WPRI; reads as zero (RV64 only)
 
 |===
 
-[#ame:doc:csr:ameudsz]
-==== ameudsz
+[#ame:doc:csr:ameparam]
+==== ameparam
 
-Holds `AME_UNIT_DATATYPE_SIZE`, the element size in bits at which exactly one
-square fits in a single M register.
+`ameparam` is a read-only CSR containing fixed architectural parameters of the
+AME implementation. `NLEN_LOG2` is the base-2 logarithm of the tile side
+length, and `UDSZ_LOG2` is the base-2 logarithm of the unit datatype size:
 
-The value is a design-time constant.  Software reads this CSR together with
-a datatype encoding to compute the *group size*: the number of consecutive M
-registers required to hold one square:
+  N = 1 << NLEN_LOG2
+  AME_NELEM = 1 << (2 * NLEN_LOG2)
+  AME_UNIT_DATATYPE_SIZE = 1 << UDSZ_LOG2
 
-  group_size = max(1, ceil(dtype_size_bits / AME_UNIT_DATATYPE_SIZE))
-
-where `dtype_size_bits` is bits [7:0] of the 32-bit datatype encoding.
-Packed datatypes use one M register and therefore have `group_size = 1`.
-When `group_size > 1`, the register index used with any instruction must be a
-multiple of `group_size`.
-
-This CSR is analogous to `vlenb` in RISC-V Vector code: software reads it
-once at function entry to derive all register-grouping and stride calculations
-without hardcoding any implementation-specific constant.
-
+Software can read this CSR once and derive tile bounds, memory strides,
+packing factors, and register-group sizes without hardcoding implementation
+parameters. `ameparam` is implementation capability state and is not saved or
+restored on a context switch.
 
 |===
 | Field | Location | Description
 
-| VALUE
-| `XLEN-1:0`
-| Unit datatype size (AME_UNIT_DATATYPE_SIZE) in bits
+| NLEN_LOG2
+| `7:0`
+| Base-2 logarithm of the AME tile side length
 
-|===
+| UDSZ_LOG2
+| `15:8`
+| Base-2 logarithm of `AME_UNIT_DATATYPE_SIZE` in bits
 
-[#ame:doc:csr:amefflags]
-==== amefflags
-
-`amefflags` holds the accrued floating-point exception flags raised by AME
-floating-point operations.  The low 5 bits have the same meaning as the
-`fflags` CSR of the RISC-V F extension.  An AME floating-point operation that
-raises an exceptional condition sets the corresponding flag bits; flags
-accrue (are never cleared by hardware) until software clears them by writing
-the CSR.  Flag updates from an executing instruction are staged and commit
-atomically with the instruction's destination writes; an instruction that
-raises a synchronous exception does not update `amefflags`.  Reserved bits are
-WPRI and read as zero.
-
-The CSR resets to zero.  It is hart state and must be saved and restored with
-the AME state when software changes execution context.  AME operations do not
-modify the `fflags` CSR of the F extension.
-
-|===
-| Field | Location | Description
-
-| NV
-| `4`
-| Invalid operation
-
-| DZ
-| `3`
-| Divide by zero
-
-| OF
-| `2`
-| Overflow
-
-| UF
-| `1`
-| Underflow
-
-| NX
-| `0`
-| Inexact
-
-|===
-
-[#ame:doc:csr:amexsat]
-==== amexsat
-
-`amexsat` reports fixed-point saturation from AME integer operations.  Bit 0 is
-the sticky saturation flag `SAT`.  `SAT` is set only when an integer
-operation whose destination datatype has `Saturation=1` clamps (saturates) an
-out-of-range result to the destination range; operations that do not saturate
-their output leave `amexsat` unchanged.  Destinations with `Saturation=0` never
-update `amexsat`.  `SAT` remains set until software clears it by writing the
-CSR.  Flag updates from an executing instruction are staged and commit
-atomically with the instruction's destination writes; an instruction that
-raises a synchronous exception does not update `amexsat`.  Reserved bits are
-WPRI and read as zero.
-
-The CSR resets to zero.  It is hart state and must be saved and restored with
-the AME state when software changes execution context.
-
-|===
-| Field | Location | Description
-
-| SAT
-| `0`
-| Fixed-point saturation flag.  Set when a saturating integer operation
-clamps its output to the destination datatype's range.
+| RESERVED
+| `XLEN-1:16`
+| Reads as zero
 
 |===
 
 [#ame:doc:csr:amestatus]
 ==== amestatus
 
-[#ame:doc:csr_field:amestatus:UN]
-`amestatus` is backend context state and reports sticky AME execution status.
-It resets to zero. Software
-clears a reported condition by writing zero to the corresponding bit; writing
-one leaves that bit set.  Reserved bits are WPRI and read as zero.
-
-
 |===
 | Field | Location | Description
 
+| FFLAGS
+| `4:0`
+| Accrued floating-point exception flags in the same bit order as `fflags`
+
 | UN
-| `0`
-| Unsupported-operation flag.  An implemented AME instruction sets `UN` when
-its datatype or operation tuple is unsupported.  The instruction makes no
-other architectural state change in that case.  `UN` remains set until
-software clears it.
+| `5`
+| Unsupported-operation flag
+
+| SAT
+| `6`
+| Fixed-point saturation flag
+
+| RESERVED
+| `XLEN-1:7`
+| WPRI; reads as zero
 
 |===
+
+`amestatus` is a read/write backend context CSR and resets to zero. A software
+write replaces each writable field with the written value, so software can
+set, clear, save, and restore every field. CSR set and clear instructions may
+modify selected bits in the usual way.
+
+[#ame:doc:csr_field:amestatus:UN]
+Hardware accrues status by setting bits and never clears them. `FFLAGS[4:0]`
+uses the standard `fflags` order: `NV`, `DZ`, `OF`, `UF`, and `NX` occupy bits
+4 through 0, respectively. AME floating-point operations update these bits but
+do not modify the standard `fflags` CSR. A saturating integer operation sets
+`SAT` when it clamps an out-of-range result. An implemented AME instruction
+sets `UN` when its datatype or operation tuple is unsupported and does not
+modify any destination data or datatype register in that case.
+
+Status updates are staged and commit atomically with the instruction's
+destination writes. An instruction that raises a synchronous exception does
+not update `amestatus`. A status update is an AME state modification and
+therefore updates each applicable `MS` field as described in
+<<ame-state-enablement>>. `amestatus` must be saved and restored with the AME
+state when software changes execution context.

@@ -16,7 +16,7 @@ rules>> for the normative contract.
   li t0, 0x40000004    # Int4
   msettyp m0, t0
   csrr t1, amestatus
-  andi t1, t1, 1
+  andi t1, t1, 0x20   # amestatus.UN
   beqz t1, int4_m_supported
 ----
 
@@ -29,7 +29,7 @@ rules>> for the normative contract.
   asettyp acc0, t0
 
   csrr t1, amestatus
-  andi t1, t1, 1
+  andi t1, t1, 0x20   # amestatus.UN
   beqz t1, int32_acc_supported
 ----
 
@@ -48,7 +48,7 @@ rules>> for the normative contract.
   mmulacc.2d acc0, m0, m0
 
   csrr t1, amestatus
-  andi t1, t1, 1
+  andi t1, t1, 0x20   # amestatus.UN
   beqz t1, widening_8_32_matmul_supported
 ----
 
@@ -506,8 +506,9 @@ See <<gemm_examples>> for the shared algorithm, group-size model, and tiling dia
 +
 Because <<ame:doc:param:AME_NELEM,AME_NELEM>> and
 <<ame:doc:param:AME_UNIT_DATATYPE_SIZE,AME_UNIT_DATATYPE_SIZE>> are implementation-defined
-parameters, `N` and `U` are read from CSRs at runtime:
-`csrr t0, amenlen` gives `N = sqrt(AME_NELEM)` and `csrr t1, ameudsz` gives `U`.
+parameters, software reads `ameparam` at runtime. `NLEN_LOG2` in bits `7:0`
+gives `N = 1 << NLEN_LOG2`, and `UDSZ_LOG2` in bits `15:8` gives
+`U = 1 << UDSZ_LOG2`.
 +
 `mls.rm` and `mss.rm` convert each contiguous row-major tile to/from the
 implementation-defined register format.  The tile-grid strides are
@@ -538,10 +539,11 @@ Algorithm::
 [source%unbreakable,c]
 ----
 // C[M×P] += A[M×K] × B[K×P]
-// Portable: N and U read from CSRs; matrices in row-major layout
+// Portable: N and U derived from ameparam; matrices in row-major layout
 
-int N          = read_csr(amenlen);    // t0: sqrt(AME_NELEM)
-int U          = read_csr(ameudsz);    // t1: AME_UNIT_DATATYPE_SIZE in bits
+unsigned long ameparam_value = read_csr(ameparam);
+int N          = 1UL << (ameparam_value & 0xFF);
+int U          = 1UL << ((ameparam_value >> 8) & 0xFF);
 int dtype_bits = dtype & 0xFF;         // t2: element size in bits
 int elem_bytes = dtype_bits / 8;       // t3
 
@@ -607,8 +609,13 @@ Code::
 gemm_portable:
 
     # ── step 1: discover N and unit datatype size ──────────────
-    csrr   t0, amenlen           # t0 = N = sqrt(AME_NELEM)
-    csrr   t1, ameudsz           # t1 = U = AME_UNIT_DATATYPE_SIZE (bits)
+    csrr   t2, ameparam          # t2[7:0]=NLEN_LOG2, t2[15:8]=UDSZ_LOG2
+    andi   t0, t2, 0xFF         # t0 = NLEN_LOG2
+    srli   t1, t2, 8
+    andi   t1, t1, 0xFF         # t1 = UDSZ_LOG2
+    li     t2, 1
+    sll    t0, t2, t0           # t0 = N = sqrt(AME_NELEM)
+    sll    t1, t2, t1           # t1 = U = AME_UNIT_DATATYPE_SIZE (bits)
 
     # ── step 2: extract element byte size from dtype encoding ──
     # dtype bits [7:0] = element size in bits
