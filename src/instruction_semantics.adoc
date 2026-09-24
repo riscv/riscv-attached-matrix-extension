@@ -292,8 +292,9 @@ For a CSR-typed-scalar `.ew.x` instruction, let
 supported; a zero, unknown, or unsupported descriptor makes it unsupported.  The
 instruction uses the low `sizeof(scalar_dtype)` bits of the X-register operand
 when XLEN is at least that width and ignores higher bits.  When
-`sizeof(scalar_dtype)` exceeds XLEN, it extends the X-register bit pattern to
-that width, sign-extending when `scalar_dtype` is a signed integer datatype and
+`sizeof(scalar_dtype)` exceeds XLEN, a floating-point `scalar_dtype` makes the
+tuple unsupported.  For other datatypes, the instruction extends the X-register
+bit pattern to that width, sign-extending for a signed integer datatype and
 zero-extending otherwise.  It interprets the resulting bits using `scalar_dtype` to form
 `c`.  There is no implicit conversion to `Md[ms2]`: `c` participates in the
 detailed `Operation` as the exact value that `scalar_dtype` denotes.  Where that
@@ -310,8 +311,16 @@ When an instruction uses `c` as an index or offset whose out-of-range value is
 architecturally visible, the tuple is unsupported unless `scalar_dtype` can
 represent every value in the range that instruction defines.  An operand that the
 instruction reduces instead — a shift amount taken modulo the element width, or a
-selector taken from low bits — carries no such requirement, because the reduction
-makes every value of `c` well defined.
+selector taken from low bits — does not inherit this general requirement, because
+the reduction makes every value of `c` well defined.  An instruction may still
+require its scalar datatype to represent a stated range.
+
+[NOTE]
+For standard integer datatypes with `N = sqrt(AME_NELEM)`, `pack_factor`, and
+element width at most 128, these range checks exclude only sub-byte scalar
+datatypes on width grounds.  For example, at `N = 128`, signed Int8 covers every
+offset in `(-N, N)` for `mcolshift.ew.x` and `mrowshift.ew.x`, while signed Int4
+does not.  Larger ranges may require a wider scalar datatype.
 
 Every X-register scalar operand of an `.ew.x` instruction is CSR-typed,
 including shift amounts, indices, offsets, and packed-slot selectors.  An

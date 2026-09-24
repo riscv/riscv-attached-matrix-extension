@@ -2497,8 +2497,9 @@ preserved.
 square spans `ceil(e / unit)` consecutive M registers and `md` shall be that
 group's base register.
 +
-The position `pos` is the low `log2(pack_factor * AME_NELEM)` bits of `X[rs2]`;
-higher bits are ignored.  It selects square `pos / AME_NELEM`, row
+The position `pos` is the unsigned XLEN-bit value of `X[rs2]` reduced modulo
+`pack_factor * AME_NELEM`.  Every register value therefore selects a position
+within the operand.  It selects square `pos / AME_NELEM`, row
 `(pos / N) % N`, and column `pos % N`.  A non-packed operand has
 `pack_factor = 1` and therefore square index zero.
 +
@@ -2510,7 +2511,7 @@ Operation::
 +
 [source]
 ----
-pos = X[rs2][log2(pack_factor * AME_NELEM)-1:0]
+pos = X[rs2] mod (pack_factor * AME_NELEM)
 s = pos / AME_NELEM
 i = (pos / N) % N
 j = pos % N
@@ -2555,7 +2556,7 @@ Operation::
 +
 [source]
 ----
-pos = X[rs2][log2(pack_factor * AME_NELEM)-1:0]
+pos = X[rs2] mod (pack_factor * AME_NELEM)
 s = pos / AME_NELEM
 i = (pos / N) % N
 j = pos % N
