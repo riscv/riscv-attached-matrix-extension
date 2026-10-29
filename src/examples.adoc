@@ -76,9 +76,10 @@ at `i_tile=1`, `k_tile=1`, `j_tile=2`.
 image::gemm-portable.svg[AME GEMM tiling diagram]
 
 Each example uses the same triple-loop structure: the i and j loops iterate over
-N×N squares of C; for each (i, j) pair the k loop loads A and B squares and
-accumulates with `mmulacc.2d`, then `mmov.m.a` moves the result to M registers and
-`mss.rm` stores the C square.
+N×N squares of C; for each (i, j) pair, C is loaded into the accumulator via
+`mls.rm` and `mmov.a.m`, the k loop loads A and B squares and accumulates with
+`mmulacc.2d`, then `mmov.m.a` moves the result to M registers and `mss.rm` stores
+the updated C square.
 Boundary squares are not shown; all examples handle only interior squares.
 
 <<<
@@ -132,7 +133,7 @@ for (int i = 0; i < M; i += N) {     // s7
     B_col_base = B;                   // a7
 
     for (int j = 0; j < P; j += N) { // t2
-        acc0 = 0;                     // mzero.2d.acc
+        acc0 = load_square(C_sq);     // mls.rm + mmov.a.m: C[i,j] square
         A_sq = A_row_base;            // t4
         B_sq = B_col_base;            // t5
 
@@ -206,7 +207,8 @@ gemm_unit_dtype:
     sub    t3, a5, t2
     blez   t3, .j_done
 
-    mzero.2d.acc  acc0
+    mls.rm  m0, a6                 # load C[i,j] square (same datatype as acc0)
+    mmov.a.m acc0, m0              # acc0 = C[i,j]
 
     mv     t4, s6                 # t4 = A square ptr
     mv     t5, a7                 # t5 = B square ptr
@@ -261,8 +263,8 @@ Assumptions::
 * The datatype is non-packed and at most 64 bits wide, so
   `group_size = dtype_bits / 8` is one of 1, 2, 4, or 8 and both square groups fit
   in `M0`–`M15`
-* The implementation supports the datatype with `msettyp`, `asettyp`, `mzero`,
-  `mls.rm`, `mss.rm`, `mmulacc.2d`, and `mmov.m.a`
+* The implementation supports the datatype with `msettyp`, `asettyp`,
+  `mls.rm`, `mss.rm`, `mmulacc.2d`, `mmov.a.m`, and `mmov.m.a`
 * The `A`, `B`, and `C` base pointers are aligned to `elem_bytes = dtype_bits / 8`
 * Tiles use the block-tiled row-major layout described above
 
@@ -320,7 +322,7 @@ for (int i = 0; i < M; i += N) {        // s7
     B_col_base = B;                      // a7
 
     for (int j = 0; j < P; j += N) {    // t2 (reused)
-        acc0 = 0;                        // mzero.2d.acc
+        acc0 = load_rm_tile(C_sq);       // mls.rm + mmov.a.m: C[i,j] tile
         A_sq = A_row_base;               // t4
         B_sq = B_col_base;               // t5
 
@@ -436,7 +438,8 @@ gemm_square:
     sub    t3, a5, t2
     blez   t3, .j_done\suffix
 
-    mzero.2d.acc  acc0
+    mls.rm  m0, a6                 # load complete C[i,j] tile group (same datatype as acc0)
+    mmov.a.m acc0, m0              # acc0 = C[i,j]
 
     mv     t4, s6                 # t4 = A square ptr
     mv     t5, a7                 # t5 = B square ptr
@@ -495,8 +498,8 @@ Assumptions::
 * The datatype is non-packed and at least eight bits wide
 * `dtype_bits / U` is one of 1, 2, 4, or 8, so the computed `group_size` reaches a
   dispatch target and both square groups fit in `M0`–`M15`
-* The implementation supports the datatype with `msettyp`, `asettyp`, `mzero`,
-  `mls.rm`, `mss.rm`, `mmulacc.2d`, and `mmov.m.a`
+* The implementation supports the datatype with `msettyp`, `asettyp`,
+  `mls.rm`, `mss.rm`, `mmulacc.2d`, `mmov.a.m`, and `mmov.m.a`
 * The `A`, `B`, and `C` base pointers are aligned to `elem_bytes = dtype_bits / 8`
 * Matrices use a block-tiled row-major layout: each `N x N` tile is
   contiguous and row-major internally, and the tile grid is row-major
@@ -566,7 +569,7 @@ for (int i = 0; i < M; i += N) {            // s7
     B_col_base = B;                          // a7
 
     for (int j = 0; j < P; j += N) {        // t2 (reused)
-        acc0 = 0;                            // mzero.2d.acc
+        acc0 = load_rm_tile(C_tile);         // mls.rm + mmov.a.m: C[i,j] tile
         A_tile = A_row_base;                 // t4
         B_tile = B_col_base;                 // t5
 
@@ -683,7 +686,8 @@ gemm_portable:
     sub    t3, a5, t2
     blez   t3, .j_done\suffix
 
-    mzero.2d.acc  acc0
+    mls.rm  m0, a6                # load C[i,j] tile (same datatype as acc0)
+    mmov.a.m acc0, m0             # acc0 = C[i,j]
 
     mv     t4, s6                # t4 = A tile ptr
     mv     t5, a7                # t5 = B tile ptr
